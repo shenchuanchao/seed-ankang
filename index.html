@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>山水西湖 · 可交互三维全景</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="canvas-wrap"></div>
+
+<!-- ============ UI 根容器（按 U 可隐藏） ============ -->
+<div id="ui-root">
+
+  <!-- 顶部标题 -->
+  <header id="title-bar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="eyebrow">WEST LAKE · SPATIAL ATLAS</span>
+    </div>
+    <h1>山水西湖</h1>
+    <p class="sub">一城山色，半城湖光。</p>
+  </header>
+
+  <!-- 右上：时辰切换 -->
+  <div id="theme-switch">
+    <button class="theme-btn active" data-theme="day" id="theme-day">☀ 晴昼</button>
+    <button class="theme-btn" data-theme="sunset" id="theme-sunset">🌇 日落</button>
+    <button class="theme-btn" data-theme="night" id="theme-night">☾ 夜游</button>
+  </div>
+
+  <!-- 左侧：景点列表 -->
+  <aside id="sidebar">
+    <div class="side-head">
+      <b>从这里，出发</b>
+      <span class="count">18 处风景</span>
+    </div>
+    <div id="spot-list"></div>
+    <div class="side-foot">点击地标 · 飞行抵达　|　按 H 回全景，U 隐界面</div>
+  </aside>
+
+  <!-- 右侧：详情卡 -->
+  <section id="card">
+    <button id="card-close" title="关闭">×</button>
+    <div class="card-photo" id="card-photo">
+      <img id="card-photo-img" alt="">
+      <span class="card-photo-zoom">⤢ 点击看大图</span>
+    </div>
+    <div class="card-no" id="card-no">01 / EXPLORE WEST LAKE</div>
+    <h2 id="card-name">断桥残雪</h2>
+    <div class="card-en" id="card-en">LINGERING SNOW</div>
+    <p class="card-desc" id="card-desc"></p>
+    <div class="card-chips" id="card-chips"></div>
+    <div class="card-actions">
+      <button id="card-closein" class="btn-primary">近景细看</button>
+      <button id="card-orbit" class="btn-ghost">环绕此处</button>
+    </div>
+    <div class="card-meta"><span id="card-tag">西湖十景</span> · 程序化几何建模 · 艺术化比例</div>
+  </section>
+
+  <!-- 底部工具栏 -->
+  <nav id="toolbar">
+    <button id="tb-overview" title="全景（H）"><span>⌂</span><i>全景</i></button>
+    <button id="tb-orbit" title="自动环绕"><span>◎</span><i>环绕</i></button>
+    <button id="tb-tour" title="路线漫游"><span>▷</span><i>漫游</i></button>
+    <button id="tb-top" title="俯视地图"><span>▤</span><i>俯视</i></button>
+    <button id="tb-list" title="景点列表"><span>▤</span><i>列表</i></button>
+    <button id="tb-photo" title="拍照导出 PNG"><span>📷</span><i>拍照</i></button>
+    <button id="tb-full" title="全屏"><span>⛶</span><i>全屏</i></button>
+  </nav>
+
+  <!-- 操作提示 -->
+  <div id="hint">左键拖动 <b>旋转</b>　·　滚轮 <b>缩放</b>　·　右键拖动 <b>平移</b>　·　点击地标 <b>飞过去</b></div>
+
+  <!-- 缩放按钮 -->
+  <div id="zoom-ctrl">
+    <button id="zoom-in">＋</button>
+    <button id="zoom-out">－</button>
+  </div>
+
+  <!-- 指北针 -->
+  <div id="compass"><div class="needle" id="compass-needle"></div><span>N</span></div>
+
+  <!-- 小地图 -->
+  <div id="minimap-wrap">
+    <div class="mm-title">区域导航</div>
+    <canvas id="minimap" width="196" height="132"></canvas>
+  </div>
+
+  <footer id="footnote">THREE.JS · 离线运行 — 艺术化地理布局，湖岸 / 距离 / 建筑比例经压缩，非测绘级地图</footer>
+</div>
+
+<!-- ============ 大图灯箱 ============ -->
+<div id="lightbox">
+  <button id="lightbox-close" title="关闭（Esc）">×</button>
+  <img id="lightbox-img" alt="">
+  <div id="lightbox-caption"></div>
+</div>
+
+<!-- ============ 开场页 ============ -->
+<div id="intro">
+  <div class="intro-card">
+    <div class="intro-eyebrow">WEST LAKE · HANGZHOU · SPATIAL ATLAS</div>
+    <h1>山水西湖</h1>
+    <p class="intro-sub">一城山色，半城湖光</p>
+    <p class="intro-desc">
+      依据真实西湖地图构建的可交互三维全景：苏堤白堤穿湖而过，雷峰保俶一南一北，
+      孤山、小瀛洲点缀波心。<br>
+      滚轮缩放、拖动旋转，点击任意地标即可飞抵现场；还可切换晴昼、日落与夜游。
+    </p>
+    <button id="enter-btn">进入西湖 →</button>
+    <div class="intro-tip">建议使用 Chrome / Edge 打开 · Three.js 已内嵌，可完全离线运行</div>
+  </div>
+</div>
+
+<script src="lib/three.min.js"></script>
+<script src="lib/OrbitControls.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
