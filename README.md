@@ -53,14 +53,33 @@ index.html   界面结构（开场页 / 列表面板 / 详情卡 / 工具栏 / �
 style.css    米白·黛绿·烟青 配色与三时主题
 data.js      瀛湖岸线、汉江、桥梁、岛屿、山峦、茶园台地、道路、12 景点的经纬度数据
 app.js       Three.js 场景、低多边形建模、交互、飞行、主题切换
-assets/photos/ 景点配图目录（当前为程序化占位，见下）
+assets/photos/ 景点配图目录（按 <景点 id>.jpg 命名投放，见下）
 lib/         离线 three.min.js（r128）与 OrbitControls
 hangzhou.mp4 上游项目（seed-westlake）的视觉风格参考片，仅作出处留存
 ```
 
+## 景点配图怎么放
+
+引擎已实现 **「优先真实照片 → 缺失自动回退程序化占位图」**：把图片按 **`assets/photos/<景点 id>.jpg`** 命名丢进去即生效，**无需改任何代码**。
+
+⚠️ 用的是 `data.js` 里景点的 **`id`（全小写英数）**，不是中文名。
+
+| 景点 | 应放的文件 | 景点 | 应放的文件 |
+| --- | --- | --- | --- |
+| 瀛湖 | `assets/photos/yinghu.jpg` | 鬼谷岭 | `assets/photos/guigu.jpg` |
+| 汉江 | `assets/photos/hanjiang.jpg` | 千层河 | `assets/photos/qianhe.jpg` |
+| 南宫山 | `assets/photos/nangong.jpg` | 双龙溶洞 | `assets/photos/shuanglong.jpg` |
+| 香溪洞 | `assets/photos/nanxi.jpg` | 凤凰山 | `assets/photos/fenghuang.jpg` |
+| 龙舟文化园 | `assets/photos/longzhou.jpg` | 安康博物馆 | `assets/photos/bowuguan.jpg` |
+| 紫阳富硒茶 | `assets/photos/chashi.jpg` | 安澜楼 | `assets/photos/anlan.jpg` |
+
+例如**安澜楼**的照片就命名为 **`anlan.jpg`**，放进 `assets/photos/`。
+
+建议尺寸 480×300 以上（详情卡按比例裁切），单张 200–600 KB。
+
 ## 已知待完善项
 
-1. **配图为程序化占位**：详情卡与大图当前由前端 Canvas 程序化绘制生成，尚未替换为安康实拍照片。接入方式为在 `assets/photos/` 下按 `<景点 id>.jpg` 命名投放。
+1. **`assets/photos/` 内仍是上游遗留的 18 张西湖照片**（`leifeng.jpg`、`baoshi.jpg` 等，合计约 9.5 MB），与安康景点 id 全部不匹配，因此当前所有景点走的都是程序化占位图。可直接删除这些文件以精简仓库；删除不影响运行（缺图即回退占位）。
 2. **坐标为艺术化近似**：场景经等比压缩（`SCALE = 150`），非测绘级地图，亦非建筑精确复刻；如需更高精度可逐个校准地标经纬度。
 3. **`hangzhou.mp4` 体积约 17MB**：作为上游出处留存。若需精简仓库，可在确认不再需要出处参考后移除（注意：仅删除文件不会缩小已有 Git 历史体积，需重写历史）。
 

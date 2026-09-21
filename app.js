@@ -257,14 +257,14 @@ function buildMaterials() {
   mats.teal = reg(new THREE.MeshStandardMaterial({ color: 0x3d8b82, roughness: .55, metalness: .1, flatShading: true }),
     0x3d8b82, 0x3d857d, 0x1e4d4f);
   mats.goldBall = new THREE.MeshStandardMaterial({ color: 0xd9b45a, roughness: .25, metalness: .7 });
-  // 雷峰铜塔
+  // 铜构塔身（塔型变体 C）
   pagodaBronzeWall = reg(new THREE.MeshStandardMaterial({ color: 0xc9924f, roughness: .5, metalness: .35, flatShading: true }),
     0xc9924f, 0xbf8544, 0x4a3c28);
   pagodaBronzeRoof = reg(new THREE.MeshStandardMaterial({ color: 0x8f6635, roughness: .45, metalness: .4, flatShading: true }),
     0x8f6635, 0x855f31, 0x33281c);
   pagodaBronzeEave = reg(new THREE.MeshStandardMaterial({ color: 0x7c562b, roughness: .5, metalness: .4, flatShading: true }),
     0x7c562b, 0x73502a, 0x2c2218);
-  // 六和木塔
+  // 木构塔身（塔型变体 B）
   pagodaWoodWall = reg(new THREE.MeshStandardMaterial({ color: 0xcfa86f, roughness: .8, flatShading: true }),
     0xcfa86f, 0xc29a60, 0x4a3e2c);
   waterMats.push(mats.water);
@@ -565,7 +565,7 @@ function buildCausewaysAndIslands() {
       if (!pointInWorldPoly(p[0], p[1], pts)) continue;
       addTreeAt(p[0], p[1], 0.5, Math.random() < .4);
     }
-    if (isl.name === '孤山') addPlumTrees(c[0] + 0.6, c[1] + 0.3, 5, 0.55);
+    if (isl.name === '翠屏岛') addPlumTrees(c[0] + 0.6, c[1] + 0.3, 5, 0.55);
   });
 }
 function pointInWorldPoly(x, z, pts) {
@@ -766,7 +766,8 @@ function treeColor(cone) {
   return c;
 }
 var TREE_SCALE = 0.62;
-var CLEAR_R = { lingyin: 15.5, liuhe: 7, chenghuang: 8, leifeng: 6.5, baoshi: 5.5, nanping: 6.5 };
+// 各地标的额外清空半径（避免树木长进建筑基座）
+var CLEAR_R = { bowuguan: 9, longzhou: 8, anlan: 7, nangong: 7, shuanglong: 6.5, yinghu: 6 };
 function nearLandmark(x, z, r) {
   r = r || 5.5;
   for (var i = 0; i < SPOTS.length; i++) {
@@ -1058,7 +1059,7 @@ function shadowize(o) {
   return o;
 }
 
-// 多层楼阁式塔；scheme: default(黛瓦白墙) / bronze(雷峰铜塔) / wood(六和木塔)
+// 多层楼阁式塔；scheme: default(黛瓦白墙) / bronze(铜构) / wood(木构)
 function pagodaModel(tiers, R, bodyH, roofH, slender, scheme) {
   var g = new THREE.Group();
   var wallMat = mats.wallCream, roofMat = mats.roof, eaveMat = mats.roofDark, colMat = mats.red;
@@ -1147,7 +1148,7 @@ function hallModel(w, d, h, wallMat) {
   return shadowize(g);
 }
 
-// 多层阁（城隍阁）
+// 多层楼阁（安澜楼）
 function towerModel(levels) {
   var g = new THREE.Group();
   var ter = new THREE.Mesh(new THREE.BoxGeometry(8, .8, 8), mats.stone);
@@ -1187,9 +1188,9 @@ function buildAllLandmarks() {
     var rot = spot.rot || 0;
 
     switch (spot.kind) {
-      case 'pagoda':
-        if (spot.id === 'baoshi') {
-          // 保俶塔：真实高约 45m（含塔刹）≈ 4.3 单位
+      case 'pagoda':   // 塔型变体（安康暂无 pagoda 类景点，保留供扩展；可用 spot.pagodaScheme 指定 brick|wood|bronze）
+        if (spot.pagodaScheme === 'brick') {
+          // 变体 A：秀挺密檐砖塔（约 45m ≈ 4.3 单位）
           var bt = pagodaModel(7, .5, 0.95, .7, true);
           bt.scale.setScalar(.38);
           g.add(bt); h = 5.0;
@@ -1199,13 +1200,13 @@ function buildAllLandmarks() {
             rk.position.set((Math.random() - .5) * 3.4, .2, 1.2 + (Math.random() - .5) * 2);
             rk.scale.y = .6; g.add(rk);
           }
-        } else if (spot.id === 'liuhe') {
-          // 六和塔：真实高约 60m ≈ 5.6 单位
+        } else if (spot.pagodaScheme === 'wood') {
+          // 变体 B：木构多层塔（约 60m ≈ 5.6 单位）
           var lh = pagodaModel(6, 1.5, 1.7, 1.0, false, 'wood');
           lh.scale.setScalar(.34);
           g.add(lh); h = 6.0;
         } else {
-          // 雷峰塔：真实高约 71m ≈ 6.6 单位
+          // 变体 C：铜构楼阁塔（约 71m ≈ 6.6 单位）
           var lf = pagodaModel(5, 1.7, 1.6, 1.0, false, 'bronze');
           lf.scale.setScalar(.5);
           g.add(lf); h = 7.4;
@@ -1216,27 +1217,25 @@ function buildAllLandmarks() {
         g.add(pavilionModel(2.1, false)); g.scale.setScalar(.45); h = 2.4;
         addDock(g, 2.1, 3.4);
         break;
-      case 'academy': // 西泠印社：石坊 + 小阁 + 梅
+      case 'academy': // 安康博物馆：石坊 + 小阁 + 梅
         var arch = pailouModel(); arch.position.z = 2.2; g.add(arch);
         var ge = pavilionModel(1.8, true); ge.position.z = -1.2; g.add(ge);
         addPlumTrees(2.2, -1.6, 3, 0.4);
         g.scale.setScalar(.55); h = 3.0;
         break;
-      case 'garden':
+      case 'garden':   // 园林变体（安康暂无 garden 类景点，保留供扩展）
         g.add(pavilionModel(1.9, Math.random() < .5));
         addZigzagBridge(g);
         g.scale.setScalar(.55);
-        if (spot.id === 'huagang') {
-          for (var f0 = 0; f0 < 18; f0++) {
-            var fl = new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 5),
-              new THREE.MeshStandardMaterial({ color: [0xe88cae, 0xf4e3f4, 0xd96f8f][f0 % 3], flatShading: true, roughness: .8 }));
-            var a0 = Math.random() * Math.PI * 2, rr0 = 2.2 + Math.random() * 1.4;
-            fl.position.set(Math.cos(a0) * rr0, .5, Math.sin(a0) * rr0); g.add(fl);
-          }
+        for (var f0 = 0; f0 < 18; f0++) {   // 花圃散布
+          var fl = new THREE.Mesh(new THREE.SphereGeometry(.22, 6, 5),
+            new THREE.MeshStandardMaterial({ color: [0xe88cae, 0xf4e3f4, 0xd96f8f][f0 % 3], flatShading: true, roughness: .8 }));
+          var a0 = Math.random() * Math.PI * 2, rr0 = 2.2 + Math.random() * 1.4;
+          fl.position.set(Math.cos(a0) * rr0, .5, Math.sin(a0) * rr0); g.add(fl);
         }
         h = 4;
         break;
-      case 'bridge': // 断桥
+      case 'bridge': // 石拱桥（安康暂无 bridge 类景点，保留供扩展）
         var br = new THREE.Group();
         var archTop = new THREE.Mesh(new THREE.TorusGeometry(3.2, .3, 8, 20, Math.PI), mats.stone);
         archTop.rotation.y = Math.PI / 2; archTop.position.y = .35; br.add(archTop);
@@ -1255,7 +1254,7 @@ function buildAllLandmarks() {
         var ap2 = ap1.clone(); ap2.position.z = -5.6; br.add(ap2);
         h = 2.6;
         break;
-      case 'island': // 三潭：三座葫芦石塔（真实高约 2m）+ 小亭
+      case 'island': // 岛屿：三座葫芦石塔（约 2m）+ 小亭（安康暂无 island 类景点，保留供扩展）
         var huting = pavilionModel(1.5, true); huting.scale.setScalar(.45); g.add(huting);
         [[-1.5, 1.0], [0.3, 1.4], [-0.4, -0.5]].forEach(function (pp) {
           var gourd = new THREE.Group();
@@ -1274,21 +1273,22 @@ function buildAllLandmarks() {
         h = 2.0;
         break;
       case 'water':
-        if (spot.id === 'sudi') {
-          // 六桥之一 + 御碑亭
+        if (spot.id === 'hanjiang') {
+          // 汉江：江畔亭 + 石拱桥
           var bp = pavilionModel(1.5, false); bp.position.set(2.0, .28, 0); bp.scale.setScalar(.5); g.add(bp);
           var sb = makeArchBridge(0, 4.4, mats.stone); sb.position.set(-2.2, .18, 0); sb.scale.setScalar(.6); g.add(sb);
           h = 2.4;
-        } else { // 西溪：草亭
+        } else { // 瀛湖 / 千层河：草亭
           var xp = pavilionModel(2.0, true); xp.scale.setScalar(.5); g.add(xp); h = 2.2;
         }
         break;
       case 'temple':
-        if (spot.id === 'lingyin') {
+        if (spot.id === 'nanxi') {
+          // 香溪洞：三进道观 + 崖壁造像
           var gate = hallModel(5, 3.4, 2.2, mats.wallOchre); gate.position.set(0, 0, 9); g.add(gate);
           var h1 = hallModel(7.5, 5.5, 3.2, mats.wallOchre); h1.position.set(0, .5, 2.5); g.add(h1);
           var h2 = hallModel(9, 6.5, 4, mats.wallOchre); h2.position.set(0, 1.4, -5); g.add(h2);
-          // 飞来峰造像岩（散布于寺院西侧林坡）
+          // 崖壁造像岩（散布于观宇西侧林坡）
           for (var ri = 0; ri < 11; ri++) {
             var a2 = -Math.PI / 2 + (ri - 5) * .18;
             var rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8 + Math.random() * 1.0, 0), mats.rock);
@@ -1296,9 +1296,9 @@ function buildAllLandmarks() {
             rock.scale.y = .8 + Math.random() * .8;
             g.add(rock);
           }
-          // 灵隐大殿真实高约 33m ≈ 3 单位
+          // 香溪洞主殿（约 33m ≈ 3 单位）
           h = 4.0; g.rotation.y = -Math.PI / 2; g.scale.setScalar(.42);
-        } else { // 净慈寺（大殿真实约 20m ≈ 1.9 单位）
+        } else { // 南宫山 / 双龙溶洞：一般寺院（大殿约 20m ≈ 1.9 单位）
           var hall = hallModel(6.5, 4.5, 2.8, mats.wallOchre); g.add(hall);
           var bellP = pavilionModel(1.7, false); bellP.position.x = 4.6; g.add(bellP);
           var bell = new THREE.Mesh(new THREE.CylinderGeometry(.7, .9, 1.6, 12), mats.bronze);
@@ -1307,7 +1307,7 @@ function buildAllLandmarks() {
         }
         break;
       case 'tower':
-        // 城隍阁真实高约 40m ≈ 3.7 单位
+        // 安澜楼（真实高约 40m ≈ 3.7 单位）
         g.add(towerModel(3)); g.scale.setScalar(.34); h = 4.4;
         g.rotation.y = .5;
         break;
@@ -1316,7 +1316,7 @@ function buildAllLandmarks() {
         // 茶炉小景
         var stove = new THREE.Mesh(new THREE.CylinderGeometry(.4, .5, .8, 8), mats.stoneDark);
         stove.position.set(2.6, .4, 1.4); g.add(stove);
-        if (spot.id === 'longjing') {
+        if (spot.id === 'chashi') {   // 紫阳富硒茶：加一口茶井
           var well = new THREE.Mesh(new THREE.CylinderGeometry(.8, .7, .7, 10), mats.stoneDark);
           well.position.set(-2.8, .35, 1.8); g.add(well);
           var wellW = mats.water.clone(); waterMats.push(wellW);
@@ -1325,7 +1325,7 @@ function buildAllLandmarks() {
         }
         h = 2.4;
         break;
-      case 'city': // 音乐喷泉（主喷真实高约 30m ≈ 2.7 单位）
+      case 'city': // 城市广场与喷泉（安康暂无 city 类景点，保留供扩展）
         var rim = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, .4, 24), mats.stone);
         rim.position.set(0, .2, -2.6); g.add(rim);
         var ring2 = new THREE.Mesh(new THREE.TorusGeometry(2.4, .12, 8, 30), mats.bronze);
@@ -1753,7 +1753,7 @@ function bindEvents() {
     if (!spot) return;
     var lb = document.getElementById('lightbox');
     var img = document.getElementById('lightbox-img');
-    img.src = spotPhoto(spot);
+    setSpotPhoto(img, spot);
     img.alt = spot.name;
     document.getElementById('lightbox-caption').textContent = spot.name + '　' + spot.en;
     lb.classList.add('open');
@@ -1832,16 +1832,15 @@ function closeCard() {
 function openCard(spot) {
   var card = document.getElementById('card');
   card.dataset.id = spot.id;
-  document.getElementById('card-no').textContent = spot.no ? spot.no + ' / EXPLORE WEST LAKE' : 'EXPLORE ANKANG';
+  document.getElementById('card-no').textContent = spot.no ? spot.no + ' / EXPLORE ANKANG' : 'EXPLORE ANKANG';
   document.getElementById('card-name').textContent = spot.name;
   document.getElementById('card-en').textContent = spot.en;
   document.getElementById('card-desc').textContent = spot.desc;
   document.getElementById('card-tag').textContent = spot.tag;
   var photoBox = document.getElementById('card-photo');
   var photoImg = document.getElementById('card-photo-img');
-  photoImg.src = spotPhoto(spot);
-  photoImg.onerror = function () { photoBox.style.display = 'none'; };
-  photoImg.onload = function () { photoBox.style.display = ''; };
+  setSpotPhoto(photoImg, spot);
+  photoBox.style.display = '';   // 始终有图（实拍或占位图），不再因加载失败而隐藏
   var chips = document.getElementById('card-chips');
   chips.innerHTML = '';
   spot.chips.forEach(function (c) {
@@ -1872,6 +1871,29 @@ function spotPhoto(spot) {
   return c.toDataURL();
 }
 
+/* ---------------- 景点真实照片：命名约定与装载 ---------------- */
+/* 约定：assets/photos/<景点 id>.jpg —— 用 data.js 中的 id（全小写英数），不是中文名。
+ * 例：安澜楼 → assets/photos/anlan.jpg ；紫阳富硒茶 → assets/photos/chashi.jpg
+ * 放置即生效，无需改代码；文件缺失时自动回退到上面的程序化占位图。 */
+var PHOTO_DIR = 'assets/photos/';
+var photoMissed = {};   // 已确认缺失的景点 id，避免每次开卡片都重复请求 404
+
+function spotPhotoFile(spot) { return PHOTO_DIR + spot.id + '.jpg'; }
+
+function setSpotPhoto(imgEl, spot) {
+  if (photoMissed[spot.id]) {          // 已知无实拍图，直接用占位图
+    imgEl.onerror = null;
+    imgEl.src = spotPhoto(spot);
+    return;
+  }
+  imgEl.onerror = function () {        // 真实照片加载失败 → 回退占位图
+    photoMissed[spot.id] = true;
+    imgEl.onerror = null;              // 清掉回调，防止回退图自身失败造成死循环
+    imgEl.src = spotPhoto(spot);
+  };
+  imgEl.src = spotPhotoFile(spot);
+}
+
 /* ---------------- 飞行 ---------------- */
 function easeInOut(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
 
@@ -1900,22 +1922,27 @@ function flyTo(target, camPos, duration, phiFixed) {
   controls.enabled = false;
 }
 
-// 湖光中心（相机默认从湖一侧看地标）
-var LAKE_FOCUS = new THREE.Vector3(0.6, 0, 1.2);
+// 水体中心（相机默认隔水看地标）—— 取汉江城区段（109.00°E, 32.670°N）投影坐标
+var LAKE_FOCUS = new THREE.Vector3(22.5, 0, -10.5);
 var OVERVIEW_TARGET, OVERVIEW_POS;
-// 最佳观赏方位角（绕地标，0=南, π/2=东, π=北）；让镜头隔着湖面/江面看地标，山作背景
+// 最佳观赏方位角（绕地标，0=南, π/2=东, π=北）；让镜头隔着汉江/湖面看地标，山作背景
 var AZ_OVERRIDE = {
-  // 方位角 0=南 / π/2=东 / π=北；取“隔着湖面或山谷看建筑、山为背景”的方向
-  leifeng: 2.7, nanping: 2.9, lingyin: 1.2, liuhe: 0.3,
-  baoshi: -0.75, duanqiao: -0.4, gushan: -2.3, chenghuang: -1.7
+  anlan: 0.15,      // 隔汉江看安澜楼
+  bowuguan: -0.1,   // 隔汉江看安康博物馆
+  longzhou: 0.35,   // 江畔龙舟文化园
+  nanxi: -0.7,      // 自西南望香溪洞，山为背景
+  nangong: 0.9,     // 南宫山主峰侧望
+  guigu: -1.1,      // 鬼谷岭云雾侧
+  fenghuang: 0.6,   // 凤凰山茶园
+  shuanglong: 1.2   // 双龙溶洞
 };
 // 特殊地标取景覆盖：[远观距离, 近看距离, 俯角phi]（phi 越接近 π/2 越平视）
 var VIEW_TWEAK = {
-  lingyin: [15, 10.5, 1.22],
-  liuhe: [16, 10, 1.24],
-  baoshi: [16, 10, 1.28],
-  chenghuang: [16, 10, 1.24],
-  leifeng: [19, 12, 1.28]
+  anlan: [16, 10, 1.24],
+  bowuguan: [17, 11, 1.22],
+  longzhou: [15, 10, 1.26],
+  nangong: [19, 13, 1.18],
+  shuanglong: [16, 10, 1.28]
 };
 function flyToSpot(id, closeIn) {
   var lm = landmarks.filter(function (l) { return l.spot.id === id; })[0];
@@ -1952,7 +1979,9 @@ function toggleTour() {
   document.getElementById('tb-orbit').classList.remove('active');
   controls.autoRotate = false;
   if (autoTour) {
-    tourSeq = ['duanqiao', 'sudi', 'santan', 'leifeng', 'liulang', 'baoshi', 'gushan', 'lingyin', 'liuhe', 'hubin'];
+    // 漫游路线：瀛湖 → 汉江 → 城区 → 东线 → 南线 → 西线（覆盖全部 12 处景点）
+    tourSeq = ['yinghu', 'hanjiang', 'anlan', 'longzhou', 'bowuguan', 'nanxi',
+               'shuanglong', 'nangong', 'qianhe', 'chashi', 'fenghuang', 'guigu'];
     flyToSpot(tourSeq[0]);
   }
 }
