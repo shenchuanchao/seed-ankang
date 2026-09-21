@@ -7,6 +7,7 @@
 /* ---------------- 全局 ---------------- */
 var scene, camera, renderer, controls, raycaster, clock;
 var world, lakeWater, skyMesh, sunSprite, moonSprite, starPoints;
+var clouds = [];
 var hemiLight, sunLight, ambLight;
 var mats = {}, pal;
 var hillDefs = [];
@@ -93,12 +94,11 @@ function init() {
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1400);
   // 开场：安康居中，相机在城区正南方，方位角 0 → 北上南下、左西右东
-  var _sx = 0, _sz = 0;
-  SPOTS.forEach(function (s) { var w = XY(s.lon, s.lat); _sx += w[0]; _sz += w[1]; });
-  var lc0 = [_sx / SPOTS.length, _sz / SPOTS.length];
+  // 开场：以汉江大桥为中心
+  var _c0 = XY(109.00, 32.705);
+  var lc0 = [_c0[0], _c0[1]];
   OVERVIEW_TARGET = new THREE.Vector3(lc0[0], 3, lc0[1]);
-  // 正南方近距陡瞰（约 30° 倾角 2.5D 视角）：越过汉江，整片安康居中占满画面，方位角 0（北上南下）
-  OVERVIEW_POS = new THREE.Vector3(lc0[0], 74, lc0[1] + 50);
+  OVERVIEW_POS = new THREE.Vector3(lc0[0], 30, lc0[1] + 24);
   camera.position.copy(OVERVIEW_POS);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -107,6 +107,8 @@ function init() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
   document.getElementById('canvas-wrap').appendChild(renderer.domElement);
 
   controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -126,6 +128,7 @@ function init() {
 
   buildLights();
   buildSky();
+  buildClouds();
   buildMaterials();
   buildTerrain();
   buildWater();
@@ -210,15 +213,110 @@ function buildSky() {
   }
 }
 
+/* 程序化云朵（2:1 画布柔边团云，随风缓移；夜间隐藏） */
+function cloudTexture() {
+  var c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  var g = c.getContext('2d');
+  g.clearRect(0, 0, 512, 256);
+  var blobs = 30;
+  for (var i = 0; i < blobs; i++) {
+    var px = 60 + Math.random() * 392, py = 70 + Math.random() * 130;
+    var pr = 26 + Math.random() * 52;
+    var rg = g.createRadialGradient(px, py, 0, px, py, pr);
+    rg.addColorStop(0, 'rgba(255,255,255,0.85)');
+    rg.addColorStop(0.65, 'rgba(255,255,255,0.38)');
+    rg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = rg;
+    g.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  }
+  // 底部压平，让云更像积云
+  g.globalCompositeOperation = 'destination-out';
+  g.fillStyle = 'rgba(0,0,0,1)';
+  g.fillRect(0, 200, 512, 56);
+  g.fillStyle = 'rgba(0,0,0,0.55)';
+  g.fillRect(0, 186, 512, 14);
+  g.globalCompositeOperation = 'source-over';
+  var t = new THREE.CanvasTexture(c);
+  t.encoding = THREE.sRGBEncoding;
+  return t;
+}
+function buildClouds() {
+  var tex = cloudTexture();
+  for (var i = 0; i < 9; i++) {
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, opacity: 0.72, depthWrite: false, fog: false
+    }));
+    var a = i / 9 * Math.PI * 2 + Math.random() * .8;
+    var r = 130 + Math.random() * 110;
+    sp.position.set(Math.cos(a) * r, 46 + Math.random() * 34, Math.sin(a) * r);
+    var w = 70 + Math.random() * 90;
+    sp.scale.set(w, w * 0.42, 1);
+    sp.userData = { bx: sp.position.x, sp: 0.05 + Math.random() * 0.06, ph: Math.random() * Math.PI * 2 };
+    scene.add(sp);
+    clouds.push(sp);
+  }
+}
+
 function reg(mat, day, sunset, night) {
   themedMats.push({ mat: mat, day: day, sunset: sunset, night: night });
   return mat;
 }
 var autoMats = [];
 function regAuto(mat) { mat.userData.dayColor = mat.color.clone(); autoMats.push(mat); return mat; }
+
+/* 程序化噪点贴图：打破纯色地面的呆板（灰度基底，由材质色乘染） */
+function noiseMapTex(size, amp) {
+  var c = document.createElement('canvas'); c.width = c.height = size;
+  var g = c.getContext('2d');
+  g.fillStyle = '#f5f3ea'; g.fillRect(0, 0, size, size);
+  var img = g.getImageData(0, 0, size, size), d = img.data;
+  for (var i = 0; i < d.length; i += 4) {
+    var n = (Math.random() - .5) * amp * 255;
+    d[i] = Math.max(0, Math.min(255, d[i] + n));
+    d[i + 1] = Math.max(0, Math.min(255, d[i + 1] + n));
+    d[i + 2] = Math.max(0, Math.min(255, d[i + 2] + n));
+  }
+  g.putImageData(img, 0, 0);
+  var t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.encoding = THREE.sRGBEncoding;
+  t.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
+  return t;
+}
+
+/* 水面波浪凸起贴图（水平波痕 + 细噪，随帧漂移形成波光） */
+function waterBumpTex() {
+  var c = document.createElement('canvas'); c.width = c.height = 256;
+  var g = c.getContext('2d');
+  var img = g.createImageData(256, 256), d = img.data;
+  for (var y = 0; y < 256; y++) {
+    for (var x = 0; x < 256; x++) {
+      var i = (y * 256 + x) * 4;
+      var wave = Math.sin(y * 0.14 + Math.sin(x * 0.05) * 1.6) * 16
+               + Math.sin((x + y) * 0.09) * 9;
+      var v = 128 + wave + (Math.random() - .5) * 26;
+      d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  var t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(4, 4);
+  return t;
+}
+function applyWaterShimmer() {
+  waterMats.forEach(function (m) {
+    m.bumpMap = waterBumpTex();
+    m.bumpScale = .7;
+    m.roughness = .28;
+    m.metalness = .05;
+  });
+}
 function buildMaterials() {
   mats.ground = reg(new THREE.MeshStandardMaterial({ color: pal.ground, roughness: 1, flatShading: true }),
     pal.ground, PALETTES.sunset.ground, PALETTES.night.ground);
+  mats.ground.map = noiseMapTex(256, .05);
+  mats.ground.map.repeat.set(56, 42);
   mats.terrain = reg(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95, flatShading: true }),
     0xffffff, 0xd9cfb8, 0x46524a);
   mats.beach = reg(new THREE.MeshStandardMaterial({ color: pal.beach, roughness: 1, flatShading: true }),
@@ -254,6 +352,10 @@ function buildMaterials() {
     0x8a6742, 0x805f3e, 0x483724);
   mats.rock = reg(new THREE.MeshStandardMaterial({ color: 0x8b977c, roughness: 1, flatShading: true }),
     0x8b977c, 0x8f876f, 0x3f4a42);
+  mats.roadDark = reg(new THREE.MeshStandardMaterial({ color: 0x4b4b49, roughness: .95, flatShading: true }),
+    0x4b4b49, 0x434341, 0x2b2b2d);
+  mats.wallGrey = reg(new THREE.MeshStandardMaterial({ color: 0xcfccc2, roughness: .9, flatShading: true }),
+    0xcfccc2, 0xc4beb0, 0x3c3f42);
   mats.teal = reg(new THREE.MeshStandardMaterial({ color: 0x3d8b82, roughness: .55, metalness: .1, flatShading: true }),
     0x3d8b82, 0x3d857d, 0x1e4d4f);
   mats.goldBall = new THREE.MeshStandardMaterial({ color: 0xd9b45a, roughness: .25, metalness: .7 });
@@ -501,10 +603,17 @@ function buildWater() {
   // 安康城区水网（原型从略）
 
   // 汉江
+  // 汉江：先铺浅滩与石砌堤岸，再叠水面
   var riverPts = RIVER.pts.map(function (q) { return XY(q[0], q[1]); });
+  var rb = new THREE.Mesh(ribbonGeo(riverPts, RIVER.width + 3.2, false), mats.beach);
+  rb.position.y = 0.045; rb.receiveShadow = true; world.add(rb);
+  var rq = new THREE.Mesh(ribbonGeo(riverPts, RIVER.width + 1.3, false), mats.wallGrey);
+  rq.position.y = 0.07; rq.receiveShadow = true; world.add(rq);
   var rg = ribbonGeo(riverPts, RIVER.width, false);
   var rm2 = new THREE.Mesh(rg, mats.water);
-  rm2.position.y = 0.1; rm2.receiveShadow = true; world.add(rm2);
+  rm2.position.y = 0.12; rm2.receiveShadow = true; world.add(rm2);
+
+  applyWaterShimmer();
 }
 
 /* ============================================================
@@ -544,10 +653,15 @@ function buildCausewaysAndIslands() {
       ));
     }
     // 跨江桥（石拱）：按桥长均匀布点
-    [0.25, 0.5, 0.75].forEach(function (t) {
-      var pp = samplePolyline(pts, t), tan = polylineTangent(pts, t);
-      addArchBridge(pp[0], pp[1], Math.atan2(tan[0], tan[1]), 3.4, mats.stone);
-    });
+    // 跨江大桥：汉江大桥=现代混凝土梁桥；安澜桥=中承式拱桥
+    var mid = samplePolyline(pts, 0.5), tanB = polylineTangent(pts, 0.5);
+    var brgAng = Math.atan2(tanB[0], tanB[1]);
+    var brg = (cw.name === '汉江大桥')
+      ? makeBeamBridge(6.5, Math.max(2.2, cw.width), 2)
+      : makeThroughArchBridge(6, Math.max(2.0, cw.width));
+    brg.position.set(mid[0], 0, mid[1]);
+    brg.rotation.y = brgAng;
+    world.add(brg);
   });
 
   // 岛屿
@@ -597,6 +711,67 @@ function polylineTangent(pts, t) {
   return [dx / l, dz / l];
 }
 
+/* 现代梁桥（汉江大桥）：混凝土桥墩 + 沥青桥面 + 人行道护栏路灯 */
+function makeBeamBridge(length, width, pierN) {
+  var g = new THREE.Group();
+  var deck = new THREE.Mesh(new THREE.BoxGeometry(width, .5, length), mats.stone);
+  deck.position.y = 1.1; g.add(deck);
+  var road = new THREE.Mesh(new THREE.BoxGeometry(width - .6, .07, length - .4), mats.roadDark);
+  road.position.y = 1.37; g.add(road);
+  [-1, 1].forEach(function (s) {
+    var rail = new THREE.Mesh(new THREE.BoxGeometry(.1, .32, length), mats.stoneDark);
+    rail.position.set(s * (width / 2 - .06), 1.55, 0); g.add(rail);
+    var walk = new THREE.Mesh(new THREE.BoxGeometry(.5, .12, length), mats.path);
+    walk.position.set(s * (width / 2 - .4), 1.42, 0); g.add(walk);
+  });
+  for (var i = 0; i < pierN; i++) {
+    var t = (i + .5) / pierN;
+    var pier = new THREE.Mesh(new THREE.BoxGeometry(.9, 2.6, 1.1), mats.wallGrey);
+    pier.position.set(0, -0.2, (t - .5) * length);
+    g.add(pier);
+    var cap = new THREE.Mesh(new THREE.BoxGeometry(1.3, .3, 1.4), mats.stoneDark);
+    cap.position.set(0, 1.0, (t - .5) * length); g.add(cap);
+  }
+  var lampN = Math.max(2, Math.round(length / 3.5));
+  for (var j = 0; j <= lampN; j++) {
+    var z = -length / 2 + j * (length / lampN);
+    [-1, 1].forEach(function (s) {
+      var pole = new THREE.Mesh(new THREE.CylinderGeometry(.04, .05, 1.0, 5), mats.stoneDark);
+      pole.position.set(s * (width / 2 - .55), 1.95, z); g.add(pole);
+      var head = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 5), mats.goldBall);
+      head.position.set(s * (width / 2 - .55), 2.5, z); g.add(head);
+    });
+  }
+  return shadowize(g);
+}
+
+/* 中承式拱桥（安澜桥）：两道青灰拱肋 + 吊杆 */
+function makeThroughArchBridge(length, width) {
+  var g = new THREE.Group();
+  var deck = new THREE.Mesh(new THREE.BoxGeometry(width, .4, length), mats.stone);
+  deck.position.y = .9; g.add(deck);
+  var road = new THREE.Mesh(new THREE.BoxGeometry(width - .5, .06, length - .3), mats.roadDark);
+  road.position.y = 1.12; g.add(road);
+  var R = length / 2;
+  [-1, 1].forEach(function (s) {
+    var rib = new THREE.Mesh(new THREE.TorusGeometry(R, .16, 6, 28, Math.PI), mats.teal);
+    rib.rotation.y = Math.PI / 2;
+    rib.position.set(s * (width / 2 - .1), .9, 0);
+    g.add(rib);
+  });
+  for (var k = 1; k <= 5; k++) {
+    var a = k / 6 * Math.PI;
+    var zz = -Math.cos(a) * R;
+    var h = Math.sin(a) * R;
+    [-1, 1].forEach(function (s) {
+      var sus = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, h - .9, 4), mats.teal);
+      sus.position.set(s * (width / 2 - .1), .9 + h / 2, zz);
+      g.add(sus);
+    });
+  }
+  return shadowize(g);
+}
+
 /* 石拱桥（沿 +z 方向跨度）；返回已放入世界的组 */
 function addArchBridge(x, z, rotY, span, mat) {
   var g = makeArchBridge(rotY, span, mat);
@@ -641,18 +816,19 @@ var FAR_HILLS = [
 function buildHillMesh(def) {
   var c = XY(def.lon, def.lat);
   var R = Math.max(def.rx, def.rz) * 1.42;
-  var rings = 8, seg = 30;
+  var rings = 14, seg = 48;
   var seed = def.lon * 1000 + def.lat * 100;
   var positions = [], colors = [], indices = [];
   var cA = new THREE.Color(pal.grassA), cB = new THREE.Color(pal.grassB), cR = new THREE.Color(pal.rock);
 
-  positions.push(0, def.h, 0);
+  positions.push(0, def.h * (1 + (Math.random() - .5) * .05), 0);
   var topCol = (def.peak || def.rock) ? cR.clone().lerp(cB, .3) : cB.clone();
   colors.push(topCol.r, topCol.g, topCol.b);
 
   function noise(x, z) {
     return (Math.sin(x * 0.9 + seed) * Math.cos(z * 1.1 + seed * 1.7) +
-      Math.sin(x * 2.3 + seed * 0.6) * 0.5) * 0.5;
+      Math.sin(x * 2.3 + seed * 0.6) * 0.5 +
+      Math.sin(x * 4.7 + seed * 2.3) * 0.26 * Math.cos(z * 5.1 + seed)) * 0.5;
   }
   for (var i = 1; i <= rings; i++) {
     var r = i / rings;
@@ -668,8 +844,8 @@ function buildHillMesh(def) {
       positions.push(x, y, z);
       var t = Math.min(1, gx / def.h);
       var col = cA.clone().lerp(cB, t * 0.8);
-      var rocky = (t > .62 && (def.peak || def.rock || Math.random() < t * .5)) ? 0.6 : 0;
-      if (rocky) col.lerp(cR, rocky);
+      var rocky = (t > .55 && (def.peak || def.rock || Math.random() < t * .55)) ? .55 + t * .25 : 0;
+      if (rocky) col.lerp(cR, Math.min(1, rocky));
       var shade = 0.92 + noise(x * 1.3, z * 1.3) * 0.08;
       colors.push(Math.min(1, col.r * shade), Math.min(1, col.g * shade), Math.min(1, col.b * shade));
     }
@@ -882,9 +1058,9 @@ function finalizeInstances() {
     instMeshes.push(im);
     return im;
   }
-  build(inst.cone, new THREE.ConeGeometry(1, 2, 7),
+  build(inst.cone, new THREE.ConeGeometry(1, 2, 9),
     new THREE.MeshStandardMaterial({ roughness: .9, flatShading: true }));
-  build(inst.blob, new THREE.IcosahedronGeometry(1, 0),
+  build(inst.blob, new THREE.IcosahedronGeometry(1, 1),
     new THREE.MeshStandardMaterial({ roughness: .95, flatShading: true }));
   build(inst.tea, new THREE.SphereGeometry(1, 8, 5),
     new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }));
@@ -902,26 +1078,41 @@ function finalizeInstances() {
  * 城郭：东侧低多边形城区 + 钱江 CBD 意象
  * ============================================================ */
 function buildingTextures(base, win) {
-  // 日间贴图
-  var c = document.createElement('canvas'); c.width = 64; c.height = 128;
+  // 日间贴图（128×256：更细的窗格 + 竖向明暗渐变，减少近看颗粒感）
+  var c = document.createElement('canvas'); c.width = 128; c.height = 256;
   var g = c.getContext('2d');
-  g.fillStyle = base; g.fillRect(0, 0, 64, 128);
+  var grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, shadeColor(base, 1.07));
+  grad.addColorStop(0.55, base);
+  grad.addColorStop(1, shadeColor(base, .9));
+  g.fillStyle = grad; g.fillRect(0, 0, 128, 256);
+  // 屋顶压线与墙根暗角
+  g.fillStyle = 'rgba(0,0,0,.10)'; g.fillRect(0, 0, 128, 6);
+  g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, 246, 128, 10);
   // 夜景发光贴图（黑底 + 暖色窗格）
-  var e = document.createElement('canvas'); e.width = 64; e.height = 128;
+  var e = document.createElement('canvas'); e.width = 128; e.height = 256;
   var eg = e.getContext('2d');
-  eg.fillStyle = '#000'; eg.fillRect(0, 0, 64, 128);
-  for (var y = 8; y < 124; y += 14) {
-    for (var x = 6; x < 60; x += 12) {
-      var lit = Math.random() < .32;
+  eg.fillStyle = '#000'; eg.fillRect(0, 0, 128, 256);
+  for (var y = 16; y < 248; y += 18) {
+    for (var x = 9; x < 120; x += 16) {
+      var lit = Math.random() < .30;
       g.fillStyle = lit ? 'rgba(120,140,135,0.6)' : win;
-      g.fillRect(x, y, 7, 8);
+      g.fillRect(x, y, 11, 12);
       if (lit) {
-        eg.fillStyle = Math.random() < .8 ? 'rgba(255,214,140,1)' : 'rgba(190,224,255,1)';
-        eg.fillRect(x, y, 7, 8);
+        eg.fillStyle = Math.random() < .82 ? 'rgba(255,214,140,1)' : 'rgba(190,224,255,1)';
+        eg.fillRect(x, y, 11, 12);
       }
     }
   }
-  return { map: new THREE.CanvasTexture(c), emap: new THREE.CanvasTexture(e) };
+  var map = new THREE.CanvasTexture(c), emap = new THREE.CanvasTexture(e);
+  var aniso = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+  map.anisotropy = aniso; emap.anisotropy = aniso;
+  return { map: map, emap: emap };
+}
+function shadeColor(hex, k) {
+  var col = new THREE.Color(hex);
+  col.multiplyScalar(k);
+  return '#' + col.getHexString();
 }
 
 function inCityForbidden(x, z) {
@@ -1151,27 +1342,64 @@ function hallModel(w, d, h, wallMat) {
 // 多层楼阁（安澜楼）
 function towerModel(levels) {
   var g = new THREE.Group();
-  var ter = new THREE.Mesh(new THREE.BoxGeometry(8, .8, 8), mats.stone);
-  ter.position.y = .4; g.add(ter);
-  var y = .8, s = 3.4;
+  var base = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 4.0, 1.0, 8), mats.stone);
+  base.position.y = .5; g.add(base);
+  var y = 1.0, r = 2.5;
   for (var i = 0; i < levels; i++) {
-    var body = new THREE.Mesh(new THREE.BoxGeometry(s * 1.5, 2.1, s * 1.5), i % 2 ? mats.wallOchre : mats.wallCream);
-    body.position.y = y + 1.05; g.add(body);
-    for (var k = 0; k < 4; k++) {
-      var a = k / 4 * Math.PI * 2 + Math.PI / 4;
-      var pc = new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, 2.2, 6), mats.red);
-      pc.position.set(Math.cos(a) * s * .78, y + 1.1, Math.sin(a) * s * .78); g.add(pc);
+    var sc = 1 - i * .13;
+    var body = new THREE.Mesh(new THREE.CylinderGeometry(r * .60 * sc, r * .66 * sc, 1.2, 8), mats.wallCream);
+    body.position.y = y + .6; g.add(body);
+    for (var k = 0; k < 8; k++) {
+      var a = k / 8 * Math.PI * 2 + Math.PI / 8;
+      var col = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, 1.25, 5), mats.red);
+      col.position.set(Math.cos(a) * r * .64 * sc, y + .62, Math.sin(a) * r * .64 * sc);
+      g.add(col);
     }
-    var balcony = new THREE.Mesh(new THREE.BoxGeometry(s * 1.85, .18, s * 1.85), mats.stoneDark);
-    balcony.position.y = y; g.add(balcony);
-    var roof = new THREE.Mesh(new THREE.ConeGeometry(1, 1.4, 4), mats.roof);
-    roof.rotation.y = Math.PI / 4; roof.scale.set(s * 1.15, 1, s * 1.15);
-    roof.position.y = y + 2.8; g.add(roof);
-    y += 3.1; s *= .82;
+    var rail = new THREE.Mesh(new THREE.CylinderGeometry(r * .85 * sc, r * .85 * sc, .16, 8, 1, true), mats.red);
+    rail.position.y = y + .38; g.add(rail);
+    var eave = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.05 * sc, r * 1.16 * sc, .28, 8), mats.roof);
+    eave.position.y = y + 1.22; g.add(eave);
+    var roof = new THREE.Mesh(new THREE.ConeGeometry(r * .98 * sc, 1.05, 8), mats.roof);
+    roof.position.y = y + 1.78; g.add(roof);
+    y += 1.22 + .58;
   }
-  var fin = new THREE.Mesh(new THREE.ConeGeometry(.4, 1.4, 6), mats.gold);
-  fin.position.y = y + .6; g.add(fin);
-  g.userData.height = y + 1.4;
+  var spire = new THREE.Mesh(new THREE.CylinderGeometry(.08, .16, 1.6, 6), mats.gold);
+  spire.position.y = y + .7; g.add(spire);
+  var pearl = new THREE.Mesh(new THREE.SphereGeometry(.24, 8, 6), mats.gold);
+  pearl.position.y = y + 1.6; g.add(pearl);
+  g.userData.height = y + 2.0;
+  return shadowize(g);
+}
+
+// 安康博物馆：米黄石色方盒 + 中央重檐青瓦塔楼 + 两侧配楼 + 门前题名巨石
+function museumModel() {
+  var g = new THREE.Group();
+  var plinth = new THREE.Mesh(new THREE.BoxGeometry(9.8, .6, 7.4), mats.stone);
+  plinth.position.y = .3; g.add(plinth);
+  var body = new THREE.Mesh(new THREE.BoxGeometry(9, 3.4, 6.6), mats.wallCream);
+  body.position.y = 2.3; g.add(body);
+  var door = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.0, .3), mats.roofDark);
+  door.position.set(0, 1.6, 3.35); g.add(door);
+  var steps = new THREE.Mesh(new THREE.BoxGeometry(3.2, .4, 1.2), mats.stoneDark);
+  steps.position.set(0, .8, 3.9); g.add(steps);
+  var r = 2.7, ry = 4.2;
+  for (var i = 0; i < 2; i++) {
+    var eave = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.08, r * 1.14, .24, 8), mats.roofDark);
+    eave.position.y = ry; g.add(eave);
+    var roof = new THREE.Mesh(new THREE.ConeGeometry(r, .95, 8), mats.roof);
+    roof.position.y = ry + .55; g.add(roof);
+    r *= .78; ry += 1.15;
+  }
+  var fin = new THREE.Mesh(new THREE.ConeGeometry(.2, .9, 6), mats.gold);
+  fin.position.y = ry + .5; g.add(fin);
+  [-1, 1].forEach(function (s) {
+    var wing = new THREE.Mesh(new THREE.ConeGeometry(1.9, .95, 4), mats.roof);
+    wing.rotation.y = Math.PI / 4; wing.scale.set(1.1, 1, .8);
+    wing.position.set(s * 4.3, 4.3, 0); g.add(wing);
+  });
+  var rock = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1, 0), mats.rock);
+  rock.scale.set(1.5, .75, .85);
+  rock.position.set(0, .55, 5.2); g.add(rock);
   return shadowize(g);
 }
 
@@ -1218,10 +1446,9 @@ function buildAllLandmarks() {
         addDock(g, 2.1, 3.4);
         break;
       case 'academy': // 安康博物馆：石坊 + 小阁 + 梅
-        var arch = pailouModel(); arch.position.z = 2.2; g.add(arch);
-        var ge = pavilionModel(1.8, true); ge.position.z = -1.2; g.add(ge);
+        g.add(museumModel());
         addPlumTrees(2.2, -1.6, 3, 0.4);
-        g.scale.setScalar(.55); h = 3.0;
+        g.scale.setScalar(.5); h = 3.6;
         break;
       case 'garden':   // 园林变体（安康暂无 garden 类景点，保留供扩展）
         g.add(pavilionModel(1.9, Math.random() < .5));
@@ -1274,10 +1501,14 @@ function buildAllLandmarks() {
         break;
       case 'water':
         if (spot.id === 'hanjiang') {
-          // 汉江：江畔亭 + 石拱桥
-          var bp = pavilionModel(1.5, false); bp.position.set(2.0, .28, 0); bp.scale.setScalar(.5); g.add(bp);
-          var sb = makeArchBridge(0, 4.4, mats.stone); sb.position.set(-2.2, .18, 0); sb.scale.setScalar(.6); g.add(sb);
-          h = 2.4;
+          // 汉江：江面观景平台（不建亭桥，避免假建筑浮在水上）
+          var deck = new THREE.Mesh(new THREE.BoxGeometry(2.4, .18, 1.6), mats.wood);
+          deck.position.set(0, .14, 0); g.add(deck);
+          for (var hp = 0; hp < 4; hp++) {
+            var post = new THREE.Mesh(new THREE.CylinderGeometry(.08, .08, .7, 5), mats.wood);
+            post.position.set((hp % 2 ? .9 : -.9), .3, (hp < 2 ? .55 : -.55)); g.add(post);
+          }
+          h = 1.0;
         } else { // 瀛湖 / 千层河：草亭
           var xp = pavilionModel(2.0, true); xp.scale.setScalar(.5); g.add(xp); h = 2.2;
         }
@@ -1285,9 +1516,14 @@ function buildAllLandmarks() {
       case 'temple':
         if (spot.id === 'nanxi') {
           // 香溪洞：三进道观 + 崖壁造像
-          var gate = hallModel(5, 3.4, 2.2, mats.wallOchre); gate.position.set(0, 0, 9); g.add(gate);
-          var h1 = hallModel(7.5, 5.5, 3.2, mats.wallOchre); h1.position.set(0, .5, 2.5); g.add(h1);
-          var h2 = hallModel(9, 6.5, 4, mats.wallOchre); h2.position.set(0, 1.4, -5); g.add(h2);
+          var gate = hallModel(5, 3.4, 2.2, mats.wallCream); gate.position.set(0, 0, 9); g.add(gate);
+          var h1 = hallModel(7.5, 5.5, 3.2, mats.wallCream); h1.position.set(0, .5, 2.5); g.add(h1);
+          var h2 = hallModel(9, 6.5, 4, mats.wallCream); h2.position.set(0, 1.4, -5); g.add(h2);
+          // 殿前铜香炉
+          var burner = new THREE.Mesh(new THREE.CylinderGeometry(.6, .7, 1.0, 8), mats.bronze);
+          burner.position.set(0, 1.1, 6.2); g.add(burner);
+          var burnerTop = new THREE.Mesh(new THREE.ConeGeometry(.55, .5, 8), mats.bronze);
+          burnerTop.position.set(0, 1.85, 6.2); g.add(burnerTop);
           // 崖壁造像岩（散布于观宇西侧林坡）
           for (var ri = 0; ri < 11; ri++) {
             var a2 = -Math.PI / 2 + (ri - 5) * .18;
@@ -1299,7 +1535,9 @@ function buildAllLandmarks() {
           // 香溪洞主殿（约 33m ≈ 3 单位）
           h = 4.0; g.rotation.y = -Math.PI / 2; g.scale.setScalar(.42);
         } else { // 南宫山 / 双龙溶洞：一般寺院（大殿约 20m ≈ 1.9 单位）
-          var hall = hallModel(6.5, 4.5, 2.8, mats.wallOchre); g.add(hall);
+          var hall = hallModel(6.5, 4.5, 2.8, mats.wallCream); g.add(hall);
+          var hall2 = hallModel(4.2, 3.0, 1.9, mats.wallCream);
+          hall2.position.set(0, 1.0, -2.8); g.add(hall2);
           var bellP = pavilionModel(1.7, false); bellP.position.x = 4.6; g.add(bellP);
           var bell = new THREE.Mesh(new THREE.CylinderGeometry(.7, .9, 1.6, 12), mats.bronze);
           bell.position.set(4.6, 1.4, 0); g.add(bell);
@@ -1308,7 +1546,7 @@ function buildAllLandmarks() {
         break;
       case 'tower':
         // 安澜楼（真实高约 40m ≈ 3.7 单位）
-        g.add(towerModel(3)); g.scale.setScalar(.34); h = 4.4;
+        g.add(towerModel(5)); g.scale.setScalar(.34); h = 4.4;
         g.rotation.y = .5;
         break;
       case 'tea':
@@ -1569,7 +1807,7 @@ function buildAmbientLife() {
 
   // 涟漪环（初始随机散布湖面）
   var rippleMat = new THREE.MeshBasicMaterial({ color: 0xd8f4ee, transparent: true, opacity: 0, side: THREE.DoubleSide });
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < 14; i++) {
     var ring = new THREE.Mesh(new THREE.RingGeometry(.95, 1, 28), rippleMat.clone());
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = .16;
@@ -1605,19 +1843,44 @@ function randomLakePoint() {
 
 function makeBoat(withCabin) {
   var g = new THREE.Group();
-  var hull = new THREE.Mesh(new THREE.CylinderGeometry(.45, .62, 2.6, 6), mats.wood);
+  // 木质船体：六棱柱拉长压扁，船头微尖
+  var hull = new THREE.Mesh(new THREE.CylinderGeometry(.40, .55, 3.0, 6), mats.wood);
   hull.rotation.x = Math.PI / 2;
-  hull.scale.set(1, 1, .55);
-  hull.position.y = .35;
+  hull.scale.set(.85, 1, .52);
+  hull.position.y = .40;
   g.add(hull);
+  // 白色甲板
+  var deck = new THREE.Mesh(new THREE.BoxGeometry(.92, .09, 2.5), mats.wallCream);
+  deck.position.y = .72; g.add(deck);
   if (withCabin) {
-    var cabin = new THREE.Mesh(new THREE.CylinderGeometry(.5, .55, 1.0, 8, 1, false, 0, Math.PI), mats.white);
-    cabin.position.y = .95; g.add(cabin);
+    // 客舱：米白方舱 + 四坡顶
+    var cab = new THREE.Mesh(new THREE.BoxGeometry(.78, .58, 1.05), mats.wallCream);
+    cab.position.y = 1.02; g.add(cab);
+    var eave = new THREE.Mesh(new THREE.BoxGeometry(.9, .07, 1.18), mats.roofDark);
+    eave.position.y = 1.32; g.add(eave);
+    var roof = new THREE.Mesh(new THREE.ConeGeometry(.72, .42, 4), mats.roof);
+    roof.rotation.y = Math.PI / 4; roof.scale.set(1, 1, .72);
+    roof.position.y = 1.58; g.add(roof);
+  } else {
+    // 敞篷小游船：两道栏杆
+    [-1, 1].forEach(function (s) {
+      var rail = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, 1.5, 5), mats.stoneDark);
+      rail.rotation.x = Math.PI / 2;
+      rail.position.set(s * .42, 1.0, 0); g.add(rail);
+    });
   }
   var lamp = makeLantern();
-  lamp.scale.set(1.2, 1.2, 1);
-  lamp.position.set(0, 1.3, .7);
+  lamp.scale.set(1.0, 1.0, 1);
+  lamp.position.set(0, 1.25, -1.1);
   g.add(lamp);
+  // 尾迹水花：两片渐隐白带（船尾）
+  var wake = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.0, 2.4),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .32, side: THREE.DoubleSide, depthWrite: false })
+  );
+  wake.rotation.x = -Math.PI / 2;
+  wake.position.set(0, .15, 2.2);
+  g.add(wake);
   shadowize(g);
   return g;
 }
@@ -2227,12 +2490,14 @@ function setTheme(name) {
   sunLight.position.set(pal.sunPos[0], pal.sunPos[1], pal.sunPos[2]);
   ambLight.color.set(pal.amb); ambLight.intensity = pal.ambI;
 
-  // 天空渐变
-  var c = document.createElement('canvas'); c.width = 4; c.height = 256;
+  // 天空渐变（天顶 → 中天 → 地平线融合雾色，消除色带）
+  var c = document.createElement('canvas'); c.width = 8; c.height = 512;
   var g = c.getContext('2d');
-  var grad = g.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, pal.skyTop); grad.addColorStop(1, pal.skyBottom);
-  g.fillStyle = grad; g.fillRect(0, 0, 4, 256);
+  var grad = g.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0, pal.skyTop);
+  grad.addColorStop(.52, pal.skyBottom);
+  grad.addColorStop(1, pal.fog);
+  g.fillStyle = grad; g.fillRect(0, 0, 8, 512);
   var tex = new THREE.CanvasTexture(c);
   skyMesh.material.map = tex; skyMesh.material.needsUpdate = true;
 
@@ -2241,6 +2506,11 @@ function setTheme(name) {
   sunSprite.material.color.set(pal.sunColor);
   sunSprite.position.set(pal.sunPos[0] * 2.4, pal.sunPos[1] * 2.2, pal.sunPos[2] * 2);
   moonSprite.material.opacity = pal.moonVisible;
+  // 云朵随时辰淡入淡出并染色
+  clouds.forEach(function (cl) {
+    cl.material.opacity = name === 'day' ? .68 : (name === 'sunset' ? .5 : 0);
+    cl.material.color.set(name === 'sunset' ? 0xffdcc0 : (name === 'night' ? 0x22303f : 0xffffff));
+  });
 
   waterMats.forEach(function (m) {
     m.color.set(pal.water);
@@ -2291,6 +2561,18 @@ function animate() {
   requestAnimationFrame(animate);
   var dt = Math.min(clock.getDelta(), .05);
   var elapsed = clock.elapsedTime;
+
+  // 水面波光：凸起贴图缓慢漂移
+  waterMats.forEach(function (m) {
+    if (m.bumpMap) {
+      m.bumpMap.offset.x = (m.bumpMap.offset.x + dt * 0.012) % 1;
+      m.bumpMap.offset.y = (m.bumpMap.offset.y + dt * 0.007) % 1;
+    }
+  });
+  // 云朵缓移（往复，不跳变）
+  clouds.forEach(function (cl) {
+    cl.position.x = cl.userData.bx + Math.sin(elapsed * cl.userData.sp + cl.userData.ph) * 55;
+  });
 
   if (fly) updateFlight(elapsed);
   else controls.update();
