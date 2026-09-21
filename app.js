@@ -1,5 +1,5 @@
 /* ============================================================
- * 山水西湖 · 可交互三维全景（Three.js r128）
+ * 山水安康 · 可交互三维全景（Three.js r128）
  * 低多边形艺术沙盘：滚轮缩放 / 拖拽旋转 / 点击飞行 / 三时切换
  * ============================================================ */
 'use strict';
@@ -29,7 +29,7 @@ var hoverId = null;
 var currentTheme = 'day';
 var uiHidden = false;
 
-/* 米 → 世界单位（按西湖纬度近似） */
+/* 米 → 世界单位（按安康纬度近似） */
 var MX = 0.00957, MZ = 0.00827;
 
 /* ============================================================
@@ -38,7 +38,7 @@ var MX = 0.00957, MZ = 0.00827;
 var PALETTES = {
   day: {
     skyTop: '#cfe4e0', skyBottom: '#f3f1e4',
-    fog: '#e9eee6', fogNear: 150, fogFar: 430,
+    fog: '#e9eee6', fogNear: 200, fogFar: 700,
     hemiSky: '#dcece8', hemiGround: '#cfc79e', hemiI: 0.72,
     sun: '#fff4dd', sunI: 0.9, amb: '#ffffff', ambI: 0.24,
     sunPos: [70, 95, 40],
@@ -53,7 +53,7 @@ var PALETTES = {
   },
   sunset: {
     skyTop: '#e9c7a6', skyBottom: '#f7e3c6',
-    fog: '#f1ddc4', fogNear: 140, fogFar: 400,
+    fog: '#f1ddc4', fogNear: 190, fogFar: 660,
     hemiSky: '#f3d9bd', hemiGround: '#c9b385', hemiI: 0.72,
     sun: '#ffb977', sunI: 1.0, amb: '#ffe6cc', ambI: 0.3,
     sunPos: [-90, 34, 60],
@@ -68,7 +68,7 @@ var PALETTES = {
   },
   night: {
     skyTop: '#0b1526', skyBottom: '#1c2f49',
-    fog: '#101d30', fogNear: 130, fogFar: 380,
+    fog: '#101d30', fogNear: 180, fogFar: 640,
     hemiSky: '#2a4060', hemiGround: '#1a2a26', hemiI: 0.55,
     sun: '#9fc0ff', sunI: 0.4, amb: '#33507a', ambI: 0.36,
     sunPos: [-60, 80, -50],
@@ -92,11 +92,13 @@ function init() {
   scene.fog = new THREE.Fog(pal.fog, pal.fogNear, pal.fogFar);
 
   camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.5, 1400);
-  // 开场：西湖居中，相机在湖的正南方，方位角 0 → 北上南下、左西右东
-  var lc0 = polyCentroid(LAKE_SHORE);
+  // 开场：安康居中，相机在城区正南方，方位角 0 → 北上南下、左西右东
+  var _sx = 0, _sz = 0;
+  SPOTS.forEach(function (s) { var w = XY(s.lon, s.lat); _sx += w[0]; _sz += w[1]; });
+  var lc0 = [_sx / SPOTS.length, _sz / SPOTS.length];
   OVERVIEW_TARGET = new THREE.Vector3(lc0[0], 3, lc0[1]);
-  // 正南方近距陡瞰（约 30° 倾角 2.5D 视角）：越过南山，整片西湖居中占满画面，方位角 0（北上南下）
-  OVERVIEW_POS = new THREE.Vector3(lc0[0], 46, lc0[1] + 26);
+  // 正南方近距陡瞰（约 30° 倾角 2.5D 视角）：越过汉江，整片安康居中占满画面，方位角 0（北上南下）
+  OVERVIEW_POS = new THREE.Vector3(lc0[0], 74, lc0[1] + 50);
   camera.position.copy(OVERVIEW_POS);
 
   renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
@@ -112,7 +114,7 @@ function init() {
   controls.dampingFactor = 0.07;
   controls.target.copy(OVERVIEW_TARGET);
   controls.minDistance = 4;
-  controls.maxDistance = 320;
+  controls.maxDistance = 400;
   controls.minPolarAngle = 0.12;
   controls.maxPolarAngle = 1.45;
   controls.autoRotateSpeed = 0.55;
@@ -429,7 +431,7 @@ function inLake(x, z) {
  * 大地：圆角奶油色沙盘底板
  * ============================================================ */
 function buildTerrain() {
-  var slabShape = roundedRectShape(218, 148, 9);
+  var slabShape = roundedRectShape(240, 180, 10);
   var slabGeo = new THREE.ExtrudeGeometry(slabShape, {
     depth: 3, bevelEnabled: true, bevelThickness: 1.2, bevelSize: 3.0, bevelSegments: 4
   });
@@ -441,19 +443,18 @@ function buildTerrain() {
   slab.receiveShadow = true;
   world.add(slab);
 
-  var topGeo = new THREE.ShapeGeometry(roundedRectShape(214, 144, 7.5));
+  var topGeo = new THREE.ShapeGeometry(roundedRectShape(236, 176, 8));
   topGeo.rotateX(-Math.PI / 2); topGeo.translate(0, 0.02, 0);
   var top = new THREE.Mesh(topGeo, mats.ground);
   top.receiveShadow = true;
   world.add(top);
 
-  // 草地色块：环湖公园与西侧山谷
+  // 草地色块：瀛湖湖畔、汉江滨江与周边山谷
   var meadows = [
-    [120.1565, 30.2510, 6.5], [120.1540, 30.2470, 4.2], [120.1480, 30.2410, 4.5],
-    [120.1390, 30.2430, 5.5], [120.1335, 30.2550, 5.0], [120.1350, 30.2605, 3.6],
-    [120.1280, 30.2570, 7.0], [120.1240, 30.2480, 6.0], [120.1220, 30.2420, 5.5],
-    [120.1360, 30.2390, 5.0], [120.1500, 30.2395, 5.5], [120.1460, 30.2625, 3.2],
-    [120.1640, 30.2470, 3.5], [120.1350, 30.2360, 4.5], [120.1050, 30.2640, 6.0]
+    [108.90, 32.585, 6.5], [108.855, 32.600, 4.5], [108.940, 32.600, 4.2],
+    [109.000, 32.685, 5.5], [109.050, 32.640, 5.0], [108.820, 32.345, 6.0],
+    [108.500, 32.500, 7.0], [108.700, 32.400, 6.0], [109.100, 32.720, 4.5],
+    [108.950, 32.700, 5.0], [108.300, 32.900, 6.5], [108.200, 33.000, 6.0]
   ];
   meadows.forEach(function (m) {
     var c = XY(m[0], m[1]);
@@ -489,30 +490,17 @@ function buildWater() {
   lakeWater = addWater(LAKE_SHORE, 0.12);
   addWater(INNER_LAKE, 0.12);
 
-  // 小瀛洲内湖
-  var c = XY(120.1496, 30.2469), pond = [];
+  // 瀛湖湖心小潭（翠屏岛旁）
+  var c = XY(108.915, 32.618), pond = [];
   for (var i = 0; i < 14; i++) {
     var a = i / 14 * Math.PI * 2;
-    pond.push([c[0] + Math.cos(a) * 1.25, c[1] + Math.sin(a) * 1.05]);
+    pond.push([c[0] + Math.cos(a) * 1.1, c[1] + Math.sin(a) * 0.9]);
   }
   addWater(pond, 0.5, 0.92);
 
-  // 西溪湿地水网
-  var xixiCenter = XY(120.1020, 30.2660);
-  for (var k = 0; k < 5; k++) {
-    var pts = [];
-    for (var t = 0; t <= 10; t++) {
-      var lon = 120.095 + k * 0.0032 + Math.sin(t * 1.3 + k) * 0.0008;
-      var lat = 30.261 + t * 0.0011;
-      var q = XY(lon, lat);
-      pts.push(q);
-    }
-    var g = ribbonGeo(pts, 0.9 + (k % 2) * 0.3, false);
-    var wm = mats.water.clone(); waterMats.push(wm);
-    var rm = new THREE.Mesh(g, wm); rm.position.y = 0.13; world.add(rm);
-  }
+  // 安康城区水网（原型从略）
 
-  // 钱塘江
+  // 汉江
   var riverPts = RIVER.pts.map(function (q) { return XY(q[0], q[1]); });
   var rg = ribbonGeo(riverPts, RIVER.width, false);
   var rm2 = new THREE.Mesh(rg, mats.water);
@@ -555,13 +543,11 @@ function buildCausewaysAndIslands() {
         willowColor()
       ));
     }
-    // 苏堤六桥（石拱）
-    if (cw.name === '苏堤') {
-      [0.12, 0.30, 0.50, 0.68, 0.86].forEach(function (t) {
-        var pp = samplePolyline(pts, t), tan = polylineTangent(pts, t);
-        addArchBridge(pp[0], pp[1], Math.atan2(tan[0], tan[1]), 3.4, mats.stone);
-      });
-    }
+    // 跨江桥（石拱）：按桥长均匀布点
+    [0.25, 0.5, 0.75].forEach(function (t) {
+      var pp = samplePolyline(pts, t), tan = polylineTangent(pts, t);
+      addArchBridge(pp[0], pp[1], Math.atan2(tan[0], tan[1]), 3.4, mats.stone);
+    });
   });
 
   // 岛屿
@@ -572,7 +558,7 @@ function buildCausewaysAndIslands() {
     world.add(body);
     // 岛上树木
     var c = polyCentroid(isl.pts);
-    var trees = isl.name === '孤山' ? 16 : (isl.name === '小瀛洲' ? 7 : 5);
+    var trees = 8;
     for (var i = 0; i < trees; i++) {
       var a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 1.9;
       var p = [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r];
@@ -644,11 +630,12 @@ function makeArchBridge(rotY, span, mat) {
  * 低多边形山峦
  * ============================================================ */
 HILLS.forEach(function (h) { hillDefs.push(h); });
-// 远景围山（氛围）：[lon, lat, rx, rz, h]
+// 远景围山（氛围，秦巴山地环绕）：[lon, lat, rx, rz, h]
 var FAR_HILLS = [
-  [120.088, 30.254, 16, 12, 13], [120.088, 30.274, 12, 9, 9],
-  [120.084, 30.240, 15, 11, 14], [120.100, 30.229, 14, 9, 11],
-  [120.138, 30.225, 19, 8, 9], [120.168, 30.224, 17, 8, 8]
+  [108.45, 32.280, 8, 5, 8], [108.950, 32.220, 9, 5, 7],
+  [109.320, 32.400, 7, 5, 8], [109.340, 32.780, 7, 4, 7],
+  [109.100, 33.060, 8, 5, 9], [108.700, 33.070, 7, 4, 8],
+  [108.400, 32.960, 7, 4, 7], [108.140, 32.650, 8, 5, 9]
 ];
 
 function buildHillMesh(def) {
@@ -842,9 +829,9 @@ function addTeaField(lon, lat, rows, spacing, ang) {
 function buildVegetation() {
   // 公园区散点树
   var zones = [
-    [120.1565, 30.2500, 42], [120.1340, 30.2570, 30], [120.1390, 30.2440, 26],
-    [120.1500, 30.2400, 22], [120.1250, 30.2470, 26], [120.1630, 30.2460, 14],
-    [120.1030, 30.2650, 30]
+    [109.020, 32.680, 40], [108.990, 32.660, 28], [109.030, 32.670, 24],
+    [109.000, 32.650, 22], [108.970, 32.690, 22], [109.050, 32.665, 14],
+    [108.900, 32.630, 30]
   ];
   zones.forEach(function (zn) {
     var c = XY(zn[0], zn[1]);
@@ -859,14 +846,11 @@ function buildVegetation() {
     }
   });
 
-  // 茶园：龙井 & 双峰
-  addTeaField(120.1255, 30.2440, 9, 1.05, -0.5);
-  addTeaField(120.1275, 30.2520, 7, 1.0, 0.35);
+  // 茶园：紫阳富硒茶 & 平利富硒茶
+  addTeaField(108.50, 32.50, 10, 1.05, -0.5);
+  addTeaField(109.30, 32.40, 8, 1.0, 0.35);
 
-  // 荷花：曲院风荷 & 小瀛洲周边
-  lotusPads(120.1325, 30.2560, 46, 2.6);
-  lotusPads(120.1495, 30.2476, 26, 1.6);
-  lotusPads(120.1512, 30.2525, 14, 1.0);
+  // 安康原型：以水景与茶园为主，荷花图略
 }
 function lotusPads(lon, lat, n, r) {
   var c = XY(lon, lat);
@@ -952,7 +936,7 @@ function inCityForbidden(x, z) {
     var sc = XY(SPOTS[i].lon, SPOTS[i].lat);
     if (Math.hypot(x - sc[0], z - sc[1]) < 4.6) return true;
   }
-  // 钱塘江
+  // 汉江
   for (i = 0; i < RIVER.pts.length - 1; i++) {
     var a = XY(RIVER.pts[i][0], RIVER.pts[i][1]), b = XY(RIVER.pts[i + 1][0], RIVER.pts[i + 1][1]);
     var dx = b[0] - a[0], dz = b[1] - a[1];
@@ -972,22 +956,20 @@ function buildCity() {
   var unitGeo = new THREE.BoxGeometry(1, 1, 1);
   unitGeo.translate(0, 0.5, 0);
 
-  var cell = 3.6;
-  for (var bx = 16; bx < 100; bx += cell) {
-    for (var bz = -56; bz < 40; bz += cell) {
-      var x = bx + (Math.random() - .5) * 1.2, z = bz + (Math.random() - .5) * 1.2;
+  var cell = 3.2;
+  for (var bx = -8; bx < 46; bx += cell) {
+    for (var bz = -36; bz < -17; bz += cell) {
+      var x = bx + (Math.random() - .5) * 1.1, z = bz + (Math.random() - .5) * 1.1;
       if (inCityForbidden(x, z)) continue;
-      // 密度：远离湖山更高
-      var density = .5 + Math.min((x - 14) / 60, 1) * .4;
+      // 密度：越靠城区中心越密
+      var density = .42 + Math.min((x + 8) / 54, 1) * .3;
       if (Math.random() > density) continue;
-      var w = 1.3 + Math.random() * 1.3, d = 1.3 + Math.random() * 1.3;
-      var cbdBand = (x > 52 && x < 80 && z > 0 && z < 18);
-      // 真实天际线梯度（1 单位 ≈ 11m）：滨湖 6–22m 低层，城东 25–80m 高层，钱江新城 80–170m
+      var w = 1.2 + Math.random() * 1.0, d = 1.2 + Math.random() * 1.0;
+      var cbdBand = (x > 2 && x < 26 && z > -30 && z < -20);
+      // 安康城区天际线：汉江北岸，低层为主，江畔略高（艺术化比例）
       var hgt;
-      if (cbdBand) hgt = 7 + Math.random() * 8.5;
-      else if (x < 30) hgt = 0.5 + Math.random() * 1.5;
-      else if (x < 52) hgt = 2 + Math.random() * 4.5;
-      else hgt = 2.5 + Math.random() * 5;
+      if (cbdBand) hgt = 2.2 + Math.random() * 2.4;
+      else hgt = 0.9 + Math.random() * 1.8;
       var vi = Math.random() < .18 ? 2 : (Math.random() < .45 ? 1 : 0);
       var m = new THREE.Matrix4();
       m.compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion(), new THREE.Vector3(w, hgt, d));
@@ -1011,12 +993,12 @@ function buildCity() {
 
   // 道路网格（浅色细线）
   var roadMat = new THREE.MeshStandardMaterial({ color: 0xd5d0b8, roughness: 1 });
-  for (var rx = 20; rx < 98; rx += 10.8) {
-    var g = ribbonGeo([[rx, -56], [rx, 40]], 1.1, false);
+  for (var rx = 2; rx < 60; rx += 12) {
+    var g = ribbonGeo([[rx, -42], [rx, 24]], 1.1, false);
     var r = new THREE.Mesh(g, roadMat); r.position.y = 0.06; world.add(r);
   }
-  for (var rz = -54; rz < 38; rz += 10.8) {
-    var g2 = ribbonGeo([[15, rz], [100, rz]], 1.1, false);
+  for (var rz = -40; rz < 26; rz += 12) {
+    var g2 = ribbonGeo([[-2, rz], [64, rz]], 1.1, false);
     var r2 = new THREE.Mesh(g2, roadMat); r2.position.y = 0.06; world.add(r2);
   }
   // 滨湖大道
@@ -1031,46 +1013,20 @@ function buildCity() {
     var rroad = new THREE.Mesh(rg, roadMat); rroad.position.y = .07; world.add(rroad);
   }
 
-  /* ---- 钱江新城意象：三塔 / 金球 / 莲花碗 / 跨江桥 ---- */
+  /* ---- 安康城区意象：江畔楼群 ---- */
   var cbd = new THREE.Group();
   world.add(cbd);
-  // 杭州来福士双塔（真实高约 250m / 200m ≈ 23 / 18 单位，直径约 45m ≈ 2 单位）
-  [0, 1, 2].forEach(function (i) {
-    var h = [22.7, 18.2, 15.5][i];
-    var tw = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.5, h, 10), mats.teal);
-    tw.position.set(60 + i * 4.2, h / 2, 9 + (i === 1 ? 1.4 : 0));
-    tw.castShadow = true; cbd.add(tw);
-    var cap = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, .6, 10), mats.gold);
-    cap.position.set(tw.position.x, h + .3, tw.position.z); cbd.add(cap);
+  var cityBlocks = [
+    [6, 6.0, -22], [14, 5.0, -24], [-2, 7.5, -20], [22, 4.5, -26], [10, 5.5, -19], [-8, 6.5, -25]
+  ];
+  cityBlocks.forEach(function (b) {
+    var bh = b[1];
+    var tw = new THREE.Mesh(new THREE.BoxGeometry(2.4, bh, 2.4), mats.stone);
+    tw.position.set(b[0], bh / 2, b[2]);
+    tw.castShadow = true; tw.receiveShadow = true; cbd.add(tw);
+    var roof = new THREE.Mesh(new THREE.BoxGeometry(2.6, .4, 2.6), mats.roofDark);
+    roof.position.set(b[0], bh + .2, b[2]); cbd.add(roof);
   });
-  // 日月同辉：杭州洲际金球（真实直径约 85m ≈ 7.7 单位）
-  var ball = new THREE.Mesh(new THREE.SphereGeometry(3.8, 18, 12), mats.goldBall);
-  ball.position.set(55, 3.8, 10.5); ball.castShadow = true; cbd.add(ball);
-  var ballBase = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 5.0, .5, 18), mats.stone);
-  ballBase.position.set(55, .25, 10.5); cbd.add(ballBase);
-  // 大剧院月牙（轮廓跨度约 160m）
-  var moon = new THREE.Mesh(new THREE.TorusGeometry(4.0, .9, 8, 24, Math.PI * 1.35), mats.white);
-  moon.position.set(49, 3.4, 12); moon.rotation.set(0.4, 0.6, 0.2); moon.castShadow = true; cbd.add(moon);
-  // 奥体大莲花（真实直径约 290m ≈ 26 单位）
-  var lotus = new THREE.Group();
-  lotus.position.set(75, 0, 17);
-  lotus.scale.setScalar(1.55);
-  var base = new THREE.Mesh(new THREE.CylinderGeometry(7.5, 8, 1.4, 28), mats.white);
-  base.position.y = .7; lotus.add(base);
-  for (var p = 0; p < 26; p++) {
-    var ang = p / 26 * Math.PI * 2;
-    var petal = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 6), mats.white);
-    petal.scale.set(0.9, 3.6, .5);
-    petal.position.set(Math.cos(ang) * 6.4, 2.9, Math.sin(ang) * 6.4);
-    petal.rotation.y = -ang;
-    petal.rotation.x = 0.42;
-    petal.castShadow = true;
-    lotus.add(petal);
-  }
-  world.add(lotus);
-  // 跨江斜拉桥
-  addCableBridge(XY(120.150, 30.2285)[0], XY(120.150, 30.2285)[1], 0.05);
-  addCableBridge(XY(120.175, 30.229)[0], XY(120.175, 30.229)[1], 0.02);
 }
 
 function addCableBridge(x, z, ang) {
@@ -1462,7 +1418,7 @@ function makeLantern() {
 }
 
 /* ============================================================
- * 环湖主要道路 + 杭州地铁
+ * 城市主要道路 + 轨道交通
  * ============================================================ */
 var roadLabelSprites = [], stationBadges = [], stationNames = [], metroGroup = null;
 
@@ -1592,12 +1548,13 @@ function buildMetro() {
  * 环境生灵：游船 / 涟漪 / 飞鸟
  * ============================================================ */
 function buildAmbientLife() {
+  // 瀛湖游船航线
   var paths = [
-    [[120.1530, 30.2540], [120.1490, 30.2510], [120.1460, 30.2480], [120.1490, 30.2450]],
-    [[120.1340, 30.2540], [120.1360, 30.2510], [120.1380, 30.2480], [120.1370, 30.2460]],
-    [[120.1550, 30.2490], [120.1520, 30.2470], [120.1500, 30.2485], [120.1525, 30.2505]],
-    [[120.1440, 30.2540], [120.1420, 30.2510], [120.1430, 30.2485]],
-    [[120.1360, 30.2605], [120.1400, 30.2615], [120.1440, 30.2610]]
+    [[108.870, 32.600], [108.900, 32.586], [108.930, 32.596], [108.910, 32.616]],
+    [[108.850, 32.598], [108.880, 32.590], [108.900, 32.605]],
+    [[108.890, 32.578], [108.920, 32.588], [108.940, 32.600]],
+    [[108.860, 32.614], [108.890, 32.620], [108.920, 32.614]],
+    [[108.880, 32.602], [108.910, 32.606], [108.930, 32.610]]
   ];
   paths.forEach(function (path, pi) {
     var boat = makeBoat(pi % 2 === 0);
@@ -1796,7 +1753,7 @@ function bindEvents() {
     if (!spot) return;
     var lb = document.getElementById('lightbox');
     var img = document.getElementById('lightbox-img');
-    img.src = 'assets/photos/' + id + '.jpg';
+    img.src = spotPhoto(spot);
     img.alt = spot.name;
     document.getElementById('lightbox-caption').textContent = spot.name + '　' + spot.en;
     lb.classList.add('open');
@@ -1875,14 +1832,14 @@ function closeCard() {
 function openCard(spot) {
   var card = document.getElementById('card');
   card.dataset.id = spot.id;
-  document.getElementById('card-no').textContent = spot.no ? spot.no + ' / EXPLORE WEST LAKE' : 'EXPLORE WEST LAKE';
+  document.getElementById('card-no').textContent = spot.no ? spot.no + ' / EXPLORE WEST LAKE' : 'EXPLORE ANKANG';
   document.getElementById('card-name').textContent = spot.name;
   document.getElementById('card-en').textContent = spot.en;
   document.getElementById('card-desc').textContent = spot.desc;
   document.getElementById('card-tag').textContent = spot.tag;
   var photoBox = document.getElementById('card-photo');
   var photoImg = document.getElementById('card-photo-img');
-  photoImg.src = 'assets/photos/' + spot.id + '.jpg';
+  photoImg.src = spotPhoto(spot);
   photoImg.onerror = function () { photoBox.style.display = 'none'; };
   photoImg.onload = function () { photoBox.style.display = ''; };
   var chips = document.getElementById('card-chips');
@@ -1891,6 +1848,28 @@ function openCard(spot) {
     var s = document.createElement('span'); s.className = 'chip'; s.textContent = c; chips.appendChild(s);
   });
   card.classList.add('open');
+}
+
+/* ---------------- 景点示意图（程序化占位，可替换为真实照片） ---------------- */
+function spotPhoto(spot) {
+  var c = document.createElement('canvas'); c.width = 480; c.height = 300;
+  var x = c.getContext('2d');
+  var g = x.createLinearGradient(0, 0, 480, 300);
+  g.addColorStop(0, '#2f6f5e'); g.addColorStop(1, '#5b6b7a');
+  x.fillStyle = g; x.fillRect(0, 0, 480, 300);
+  x.fillStyle = 'rgba(255,255,255,.10)';
+  x.beginPath(); x.arc(380, 70, 90, 0, Math.PI * 2); x.fill();
+  x.textAlign = 'center';
+  x.fillStyle = 'rgba(255,255,255,.94)';
+  x.font = 'bold 34px "Microsoft YaHei", sans-serif';
+  x.fillText(spot.name, 240, 146);
+  x.fillStyle = 'rgba(255,255,255,.72)';
+  x.font = '15px "Microsoft YaHei", sans-serif';
+  x.fillText(spot.en || '', 240, 180);
+  x.fillStyle = 'rgba(255,255,255,.55)';
+  x.font = '13px "Microsoft YaHei", sans-serif';
+  x.fillText('安康 · 山水硒都 ｜ 示意占位图', 240, 258);
+  return c.toDataURL();
 }
 
 /* ---------------- 飞行 ---------------- */
@@ -2002,7 +1981,7 @@ function updateFlight(elapsed) {
 function takePhoto() {
   renderer.render(scene, camera);
   var a = document.createElement('a');
-  a.download = '山水西湖-' + currentTheme + '.png';
+  a.download = '山水安康-' + currentTheme + '.png';
   a.href = renderer.domElement.toDataURL('image/png');
   a.click();
 }
@@ -2025,10 +2004,10 @@ function onResize() {
  * 左侧地点列表
  * ============================================================ */
 var SECTIONS = [
-  { title: '西湖十景', ids: ['duanqiao', 'pinghu', 'sudi', 'quyuan', 'santan', 'leifeng', 'liulang', 'huagang', 'nanping', 'shuangfeng'] },
-  { title: '湖山人文', ids: ['baoshi', 'gushan'] },
-  { title: '城湖相接', ids: ['chenghuang', 'hubin'] },
-  { title: '周边寻胜', ids: ['longjing', 'lingyin', 'liuhe', 'xixi'] }
+  { title: '安康八景', ids: ['yinghu', 'hanjiang', 'nangong', 'nanxi', 'longzhou'] },
+  { title: '富硒茶山', ids: ['chashi', 'fenghuang', 'guigu'] },
+  { title: '峡谷溶洞', ids: ['qianhe', 'shuanglong'] },
+  { title: '城市名片', ids: ['bowuguan', 'anlan'] }
 ];
 function buildSpotList() {
   var root = document.getElementById('spot-list');
@@ -2054,7 +2033,7 @@ function buildSpotList() {
 /* ============================================================
  * 小地图
  * ============================================================ */
-var MM_LON0 = 120.095, MM_LON1 = 120.196, MM_LAT0 = 30.220, MM_LAT1 = 30.276;
+var MM_LON0 = 108.15, MM_LON1 = 109.35, MM_LAT0 = 32.25, MM_LAT1 = 33.05;
 function updateMinimap() {
   var c = document.getElementById('minimap');
   var ctx = c.getContext('2d');

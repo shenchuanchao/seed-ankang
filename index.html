@@ -1,115 +1,115 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>山水西湖 · 可交互三维全景</title>
-<link rel="stylesheet" href="style.css">
+<html lang="zh-CN" data-page-node-id="CQEFUn7pHAFeTvc0HeyDbA">
+<head data-page-node-id="8H7Sf2wXUTrwz2piJY1tJs">
+<meta charset="UTF-8" data-page-node-id="PxPsvJAH0DMEFjhx26AcZz">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="AxJ16i2pHjtJXZjR1g3dNT">
+<title>山水安康 · 可交互三维全景</title>
+<link rel="stylesheet" href="style.css" data-page-node-id="BqPxSsmUBdbVbbQkAYPIXL">
 </head>
-<body>
-<div id="canvas-wrap"></div>
+<body data-page-node-id="43y54uCKnGAKn4QZWvQwiV">
+<div id="canvas-wrap" data-page-node-id="Tj6rrufAw7NUDHjqI7HFhw"></div>
 
 <!-- ============ UI 根容器（按 U 可隐藏） ============ -->
-<div id="ui-root">
+<div id="ui-root" data-page-node-id="OdrBsTdc9Pgc17AxI2PKwP">
 
   <!-- 顶部标题 -->
-  <header id="title-bar">
-    <div class="brand">
-      <span class="dot"></span>
-      <span class="eyebrow">WEST LAKE · SPATIAL ATLAS</span>
+  <header id="title-bar" data-page-node-id="kxejWX0qze5iGWUJBJ8SAA">
+    <div class="brand" data-page-node-id="DGbtDhrdMFhKe199KpQbFF">
+      <span class="dot" data-page-node-id="eVhByvGJkfjjyWPFU3bXnG"></span>
+      <span class="eyebrow" data-page-node-id="K9W1d4lRBvtIrUTv9S3W4O">ANKANG · SPATIAL ATLAS</span>
     </div>
-    <h1>山水西湖</h1>
-    <p class="sub">一城山色，半城湖光。</p>
+    <h1 data-page-node-id="yX6GaZ2YDa4WIpHN4BqN9D">山水安康</h1>
+    <p class="sub" data-page-node-id="wb6p6wsDbWvCcWb9POAkJy">一江清水，满城茶香。</p>
   </header>
 
   <!-- 右上：时辰切换 -->
-  <div id="theme-switch">
-    <button class="theme-btn active" data-theme="day" id="theme-day">☀ 晴昼</button>
-    <button class="theme-btn" data-theme="sunset" id="theme-sunset">🌇 日落</button>
-    <button class="theme-btn" data-theme="night" id="theme-night">☾ 夜游</button>
+  <div id="theme-switch" data-page-node-id="2HZa2ehJfeQfoNRICAIIEH">
+    <button class="theme-btn active" data-theme="day" id="theme-day" data-page-node-id="K7G6lzkkbnXTjmCynQAEAr">☀ 晴昼</button>
+    <button class="theme-btn" data-theme="sunset" id="theme-sunset" data-page-node-id="F0PecovTgj5PwclnQMibdS">🌇 日落</button>
+    <button class="theme-btn" data-theme="night" id="theme-night" data-page-node-id="jlhqovUEOlztx48kdFQpes">☾ 夜游</button>
   </div>
 
   <!-- 左侧：景点列表 -->
-  <aside id="sidebar">
-    <div class="side-head">
-      <b>从这里，出发</b>
-      <span class="count">18 处风景</span>
+  <aside id="sidebar" data-page-node-id="b1oXFGdxQBAQD95omgniy1">
+    <div class="side-head" data-page-node-id="ZuwhqSre4hxPcFnk4RCJEs">
+      <b data-page-node-id="SLKlYeKAMc6p56Vq5DGog4">从这里，出发</b>
+      <span class="count" data-page-node-id="HP3icrVQ1wbxmGdONGJdXN">12 处风景</span>
     </div>
-    <div id="spot-list"></div>
-    <div class="side-foot">点击地标 · 飞行抵达　|　按 H 回全景，U 隐界面</div>
+    <div id="spot-list" data-page-node-id="MBJpBKnK1ebOttcuaHejwt"></div>
+    <div class="side-foot" data-page-node-id="BCmLdhgErUyPXzapiO6zlc">点击地标 · 飞行抵达　|　按 H 回全景，U 隐界面</div>
   </aside>
 
   <!-- 右侧：详情卡 -->
-  <section id="card">
-    <button id="card-close" title="关闭">×</button>
-    <div class="card-photo" id="card-photo">
-      <img id="card-photo-img" alt="">
-      <span class="card-photo-zoom">⤢ 点击看大图</span>
+  <section id="card" data-page-node-id="FpvvvBWPA4FznkS4gxRTN7">
+    <button id="card-close" title="关闭" data-page-node-id="omu8wWO9HgWx5qkRU7kdgi">×</button>
+    <div class="card-photo" id="card-photo" data-page-node-id="A25HZxGDhnLluSKCYOLnG2">
+      <img id="card-photo-img" alt="" data-page-node-id="XhCwhDhzx0c06uMjvM6mEI">
+      <span class="card-photo-zoom" data-page-node-id="UUTe5ssoUyeSnpvIwfmjQj">⤢ 点击看大图</span>
     </div>
-    <div class="card-no" id="card-no">01 / EXPLORE WEST LAKE</div>
-    <h2 id="card-name">断桥残雪</h2>
-    <div class="card-en" id="card-en">LINGERING SNOW</div>
-    <p class="card-desc" id="card-desc"></p>
-    <div class="card-chips" id="card-chips"></div>
-    <div class="card-actions">
-      <button id="card-closein" class="btn-primary">近景细看</button>
-      <button id="card-orbit" class="btn-ghost">环绕此处</button>
+    <div class="card-no" id="card-no" data-page-node-id="BWwBYVxbd6VYorf3agqZzj">01 / EXPLORE ANKANG</div>
+    <h2 id="card-name" data-page-node-id="HRysTCeqDADqK9hAi16EvU">断桥残雪</h2>
+    <div class="card-en" id="card-en" data-page-node-id="KmrBVXObeE8y4ipj6jEpqs">LINGERING SNOW</div>
+    <p class="card-desc" id="card-desc" data-page-node-id="TZXhu0ejzaGExCOL6pp1oK"></p>
+    <div class="card-chips" id="card-chips" data-page-node-id="diRAUlntQowjn7Frt277EX"></div>
+    <div class="card-actions" data-page-node-id="UTYewZwi4d4duImVgYfDpQ">
+      <button id="card-closein" class="btn-primary" data-page-node-id="uGN4zVTSWUWxsHLKX3dzGw">近景细看</button>
+      <button id="card-orbit" class="btn-ghost" data-page-node-id="Bx50Ky0vWitmuwlsmGawCB">环绕此处</button>
     </div>
-    <div class="card-meta"><span id="card-tag">西湖十景</span> · 程序化几何建模 · 艺术化比例</div>
+    <div class="card-meta" data-page-node-id="13tgM1fRb9D7DRENNwG8ge"><span id="card-tag" data-page-node-id="pYOnbrAjavkrD2yHDDPj6m">安康山水</span> · 程序化几何建模 · 艺术化比例</div>
   </section>
 
   <!-- 底部工具栏 -->
-  <nav id="toolbar">
-    <button id="tb-overview" title="全景（H）"><span>⌂</span><i>全景</i></button>
-    <button id="tb-orbit" title="自动环绕"><span>◎</span><i>环绕</i></button>
-    <button id="tb-tour" title="路线漫游"><span>▷</span><i>漫游</i></button>
-    <button id="tb-top" title="俯视地图"><span>▤</span><i>俯视</i></button>
-    <button id="tb-list" title="景点列表"><span>▤</span><i>列表</i></button>
-    <button id="tb-photo" title="拍照导出 PNG"><span>📷</span><i>拍照</i></button>
-    <button id="tb-full" title="全屏"><span>⛶</span><i>全屏</i></button>
+  <nav id="toolbar" data-page-node-id="OAOCUXgcEKE6CpL4JAXPfH">
+    <button id="tb-overview" title="全景（H）" data-page-node-id="Db3JEKkXj1KLSaG2S5Uc7g"><span data-page-node-id="R16CL5q8UuwDJse9DcHerc">⌂</span><i data-page-node-id="wCnWBYi5NJZZA5TqMRSCI4">全景</i></button>
+    <button id="tb-orbit" title="自动环绕" data-page-node-id="Elq6Xh8eUMTpqnZBA05Bds"><span data-page-node-id="80q5DvJZzNGb6nIp6EKNtR">◎</span><i data-page-node-id="F6MfCtoNPNvrew9tMbagMo">环绕</i></button>
+    <button id="tb-tour" title="路线漫游" data-page-node-id="Ehagsm3iNTBnoqxH5c2X2Y"><span data-page-node-id="x2Lryb4czGygyLUDhIRpix">▷</span><i data-page-node-id="ctEznyR7HElx3cB9Gey7AD">漫游</i></button>
+    <button id="tb-top" title="俯视地图" data-page-node-id="0uSPqUa8atLRlW5hibJsoz"><span data-page-node-id="G3qbjju2XkDGX0WuftEHxs">▤</span><i data-page-node-id="jmHDpTPUZgcsBCBwuAattt">俯视</i></button>
+    <button id="tb-list" title="景点列表" data-page-node-id="chXMMQCvcwN0PLMVYGLVGn"><span data-page-node-id="HnySQ2cQJO9Rz7gzpE3OC1">▤</span><i data-page-node-id="SkZva2QsJhSTSxvOIUua9J">列表</i></button>
+    <button id="tb-photo" title="拍照导出 PNG" data-page-node-id="20RaUGZQhcbECS0U1LPot7"><span data-page-node-id="RlLWzpknCYCv4XkY78EGQH">📷</span><i data-page-node-id="NQsUhYzR6JWE6xXssT3qQV">拍照</i></button>
+    <button id="tb-full" title="全屏" data-page-node-id="GtUPipIKCbAURT6u8vbcJi"><span data-page-node-id="cYJCvXDnwP7vl7RhcnE66o">⛶</span><i data-page-node-id="YhNs2W1LG0KCVlAZvLlIP3">全屏</i></button>
   </nav>
 
   <!-- 操作提示 -->
-  <div id="hint">左键拖动 <b>旋转</b>　·　滚轮 <b>缩放</b>　·　右键拖动 <b>平移</b>　·　点击地标 <b>飞过去</b></div>
+  <div id="hint" data-page-node-id="TVCiK2VmgylFnaVKbje0X3">左键拖动 <b data-page-node-id="dShiXRG0I4UHwIyw3sEEX6">旋转</b>　·　滚轮 <b data-page-node-id="08DXK2D3EskZW1VyWRxUDE">缩放</b>　·　右键拖动 <b data-page-node-id="NZpIZRmrmEIub1zfCsjwLN">平移</b>　·　点击地标 <b data-page-node-id="9mUoOli707klieUmOF9G1B">飞过去</b></div>
 
   <!-- 缩放按钮 -->
-  <div id="zoom-ctrl">
-    <button id="zoom-in">＋</button>
-    <button id="zoom-out">－</button>
+  <div id="zoom-ctrl" data-page-node-id="i2I2TYMnuW0xjE3jdAopTc">
+    <button id="zoom-in" data-page-node-id="dn8uoPzBNUU3ScgPQYEJFC">＋</button>
+    <button id="zoom-out" data-page-node-id="8gC1yBZFwPeF6KL6MWCPQR">－</button>
   </div>
 
   <!-- 指北针 -->
-  <div id="compass"><div class="needle" id="compass-needle"></div><span>N</span></div>
+  <div id="compass" data-page-node-id="Hpc1bXiXlFLov7xcWRy1wH"><div class="needle" id="compass-needle" data-page-node-id="5R2VSPs54PLBVIH5NG7XsS"></div><span data-page-node-id="UIyRxWBgFSvlzDrxKIA7cH">N</span></div>
 
   <!-- 小地图 -->
-  <div id="minimap-wrap">
-    <div class="mm-title">区域导航</div>
-    <canvas id="minimap" width="196" height="132"></canvas>
+  <div id="minimap-wrap" data-page-node-id="R29rMa24Z6ndndt0bdfB3S">
+    <div class="mm-title" data-page-node-id="3VjHCE9jxcoo90sPX7zAkn">区域导航</div>
+    <canvas id="minimap" width="196" height="132" data-page-node-id="3lAFkikcRXF2wUqmjLEq3G"></canvas>
   </div>
 
-  <footer id="footnote">THREE.JS · 离线运行 — 艺术化地理布局，湖岸 / 距离 / 建筑比例经压缩，非测绘级地图</footer>
+  <footer id="footnote" data-page-node-id="dnYLbkDWYl3EFxQAQ5l9xq">THREE.JS · 离线运行 — 艺术化地理布局，湖岸 / 距离 / 建筑比例经压缩，非测绘级地图</footer>
 </div>
 
 <!-- ============ 大图灯箱 ============ -->
-<div id="lightbox">
-  <button id="lightbox-close" title="关闭（Esc）">×</button>
-  <img id="lightbox-img" alt="">
-  <div id="lightbox-caption"></div>
+<div id="lightbox" data-page-node-id="9U2j7fWYlnep3ehdCQQghU">
+  <button id="lightbox-close" title="关闭（Esc）" data-page-node-id="0qKuCa79SZojnQDc1BhHLP">×</button>
+  <img id="lightbox-img" alt="" data-page-node-id="zH0Xjf4sR6C0SSINsDVHDw">
+  <div id="lightbox-caption" data-page-node-id="NjoHGLQcEilcawGHZCrwPb"></div>
 </div>
 
 <!-- ============ 开场页 ============ -->
-<div id="intro">
-  <div class="intro-card">
-    <div class="intro-eyebrow">WEST LAKE · HANGZHOU · SPATIAL ATLAS</div>
-    <h1>山水西湖</h1>
-    <p class="intro-sub">一城山色，半城湖光</p>
-    <p class="intro-desc">
-      依据真实西湖地图构建的可交互三维全景：苏堤白堤穿湖而过，雷峰保俶一南一北，
-      孤山、小瀛洲点缀波心。<br>
+<div id="intro" data-page-node-id="chsXAiCItAMSzYSfW3HdGs">
+  <div class="intro-card" data-page-node-id="Xc2t4xMiUdU1kFKa8Es1Zy">
+    <div class="intro-eyebrow" data-page-node-id="MOCPoXGOJrnm17LEbDpo9E">ANKANG · SHAANXI · SPATIAL ATLAS</div>
+    <h1 data-page-node-id="GeVz5uxGXETYJtMYyn82DI">山水安康</h1>
+    <p class="intro-sub" data-page-node-id="wm7clmZznFzLKu1myXozVa">一江清水，满城茶香</p>
+    <p class="intro-desc" data-page-node-id="nqQK3ihNiiLslbit6t1ew7">
+      依据真实经纬度构建的可交互三维全景：汉江穿城东去，瀛湖波光潋滟，
+      南宫山、香溪洞分立南北。<br data-page-node-id="YVXSyKKS6unntSEUFfAm1y">
       滚轮缩放、拖动旋转，点击任意地标即可飞抵现场；还可切换晴昼、日落与夜游。
     </p>
-    <button id="enter-btn">进入西湖 →</button>
-    <div class="intro-tip">建议使用 Chrome / Edge 打开 · Three.js 已内嵌，可完全离线运行</div>
+    <button id="enter-btn" data-page-node-id="d2FU6DCm8GAP8NUPmi4PNG">进入安康 →</button>
+    <div class="intro-tip" data-page-node-id="p1LpVySYNtFJmqiNGZXI19">建议使用 Chrome / Edge 打开 · Three.js 已内嵌，可完全离线运行</div>
   </div>
 </div>
 
