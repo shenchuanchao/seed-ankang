@@ -1753,7 +1753,7 @@ function bindEvents() {
     if (!spot) return;
     var lb = document.getElementById('lightbox');
     var img = document.getElementById('lightbox-img');
-    setSpotPhoto(img, spot);
+    setSpotPhotoHD(img, spot);   // 高清为主，未就绪先用缩略图占位
     img.alt = spot.name;
     document.getElementById('lightbox-caption').textContent = spot.name + '　' + spot.en;
     lb.classList.add('open');
@@ -1872,26 +1872,86 @@ function spotPhoto(spot) {
 }
 
 /* ---------------- 景点真实照片：命名约定与装载 ---------------- */
-/* 约定：assets/photos/<景点 id>.jpg —— 用 data.js 中的 id（全小写英数），不是中文名。
- * 例：安澜楼 → assets/photos/anlan.jpg ；紫阳富硒茶 → assets/photos/chashi.jpg
- * 放置即生效，无需改代码；文件缺失时自动回退到上面的程序化占位图。 */
+/* 两档图片，放入即生效，无需改代码：
+ *   卡片缩略图  assets/photos/thumbs/<景点 id>.jpg  （长边 768：卡片仅渲染约 342×196）
+ *   灯箱高清图  assets/photos/<景点 id>.jpg         （长边 1400）
+ * 缺缩略图自动回退高清图；两者都缺则回退程序化占位图。
+ * 场景就绪后会在后台串行预热全部缩略图，故切换景点时直接从内存缓存命中，无等待。 */
 var PHOTO_DIR = 'assets/photos/';
-var photoMissed = {};   // 已确认缺失的景点 id，避免每次开卡片都重复请求 404
+var PHOTO_THUMB_DIR = PHOTO_DIR + 'thumbs/';
+var photoMissed = {};   // 已确认无实拍图的景点 id
+var photoCache = {};    // 景点 id -> { thumb: Image, full: Image }
 
-function spotPhotoFile(spot) { return PHOTO_DIR + spot.id + '.jpg'; }
+function spotPhotoFile(spot, big) {
+  return (big ? PHOTO_DIR : PHOTO_THUMB_DIR) + spot.id + '.jpg';
+}
 
+/* 取图到内存并完成解码；resolve 时即可直接上屏，不会再触发解码卡顿 */
+function loadPhoto(url) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    img.onload = function () {
+      (img.decode ? img.decode() : Promise.resolve()).then(
+        function () { resolve(img); },
+        function () { resolve(img); });
+    };
+    img.onerror = function () { reject(new Error('photo missing: ' + url)); };
+    img.src = url;
+  });
+}
+
+/* 后台预热卡片缩略图：串行加载，避免一次性占满带宽与主线程 */
+function preloadPhotos(list) {
+  var queue = (list || []).slice();
+  (function next() {
+    if (!queue.length) return;
+    var spot = queue.shift();
+    if (photoMissed[spot.id] || photoCache[spot.id]) return next();
+    var entry = photoCache[spot.id] = {};
+    loadPhoto(spotPhotoFile(spot, false)).then(function (img) {
+      entry.thumb = img;
+      next();
+    }, function () {
+      loadPhoto(spotPhotoFile(spot, true)).then(function (img) {
+        entry.thumb = entry.full = img;     // 无缩略图：退回高清图
+        next();
+      }, function () {
+        delete photoCache[spot.id];
+        photoMissed[spot.id] = true;
+        next();
+      });
+    });
+  })();
+}
+
+/* 卡片配图：优先用已预热的缩略图（内存命中，切换瞬时） */
 function setSpotPhoto(imgEl, spot) {
-  if (photoMissed[spot.id]) {          // 已知无实拍图，直接用占位图
+  if (photoMissed[spot.id]) {                // 已知无实拍图 → 直接用占位图
     imgEl.onerror = null;
     imgEl.src = spotPhoto(spot);
     return;
   }
-  imgEl.onerror = function () {        // 真实照片加载失败 → 回退占位图
+  var cached = photoCache[spot.id];
+  imgEl.onerror = function () {              // 缺图 → 回退占位图
+    imgEl.onerror = null;
     photoMissed[spot.id] = true;
-    imgEl.onerror = null;              // 清掉回调，防止回退图自身失败造成死循环
+    delete photoCache[spot.id];
     imgEl.src = spotPhoto(spot);
   };
-  imgEl.src = spotPhotoFile(spot);
+  imgEl.src = (cached && cached.thumb) ? cached.thumb.src : spotPhotoFile(spot, false);
+}
+
+/* 灯箱高清图：先用已有的缩略图立即上屏，高清就绪后无缝替换（避免空白等待） */
+function setSpotPhotoHD(imgEl, spot) {
+  if (photoMissed[spot.id]) { imgEl.src = spotPhoto(spot); return; }
+  var cached = photoCache[spot.id];
+  if (cached && cached.full) { imgEl.src = cached.full.src; return; }
+  imgEl.src = (cached && cached.thumb) ? cached.thumb.src : spotPhotoFile(spot, false);
+  loadPhoto(spotPhotoFile(spot, true)).then(function (img) {
+    var e = photoCache[spot.id] = photoCache[spot.id] || {};
+    e.full = img;
+    imgEl.src = img.src;
+  }, function () { /* 无高清图：保留缩略图显示 */ });
 }
 
 /* ---------------- 飞行 ---------------- */
@@ -2397,3 +2457,9 @@ function updateMinimapThrottled(elapsed) {
 }
 
 document.addEventListener('DOMContentLoaded', init);
+
+/* 场景就绪后于后台预热卡片缩略图：首次切换到任意景点即为内存命中，无加载等待。
+ * 延迟启动以免与首屏建模、贴图上传争抢主线程与带宽。 */
+document.addEventListener('DOMContentLoaded', function () {
+  setTimeout(function () { preloadPhotos(SPOTS); }, 2000);
+});
